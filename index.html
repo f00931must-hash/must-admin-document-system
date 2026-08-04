@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MUST 行政文書製作系統</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="loginView" class="center-card">
+    <h1>行政表單製作入口</h1>
+    <p>明新科技大學 資源教室</p>
+    <button id="loginBtn" class="primary">使用 Google 登入</button>
+  </div>
+
+  <div id="appView" class="app hidden">
+    <aside class="sidebar">
+      <h2>行政文書</h2>
+      <button class="nav active" data-view="home">📄 表單製作入口</button>
+      <button class="nav" data-view="mine">🗂️ 我的行政文書</button>
+      <div class="spacer"></div>
+      <div id="userEmail" class="user-email"></div>
+      <button id="logoutBtn" class="nav danger">登出</button>
+    </aside>
+
+    <main class="main">
+      <section id="home" class="page">
+        <div class="page-head">
+          <div>
+            <h1>行政表單製作入口</h1>
+            <p>選擇要製作的行政文書。</p>
+          </div>
+        </div>
+        <div class="form-grid">
+          <article class="form-card">
+            <span class="badge">第一份表單</span>
+            <h3>特殊教育學生個別化支持計畫 ISP</h3>
+            <p>以學校原始 Word 格式為母版，網頁填寫後產生文件。</p>
+            <button id="newIspBtn" class="primary">建立 ISP</button>
+          </article>
+          <article class="form-card muted">
+            <span class="badge">未來擴充</span>
+            <h3>其他行政文書</h3>
+            <p>ITP、會議紀錄、需求調查表等可陸續加入。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="mine" class="page hidden">
+        <div class="page-head"><div><h1>我的行政文書</h1><p>每位老師只顯示自己的草稿與文件。</p></div></div>
+        <div id="docList" class="doc-list"></div>
+      </section>
+
+      <section id="ispEditor" class="page hidden">
+        <div class="page-head">
+          <div><h1>ISP 基礎資料</h1><p>v0.1 先驗證登入、個人存檔與資料結構；Word 精準填值下一階段接上。</p></div>
+          <button id="backBtn" class="secondary">返回</button>
+        </div>
+        <form id="ispForm" class="editor-card">
+          <input type="hidden" id="docId" />
+          <div class="row two">
+            <label>學年度<input id="academicYear" type="number" required></label>
+            <label>學期<select id="semester"><option value="1">第一學期</option><option value="2">第二學期</option></select></label>
+          </div>
+          <div class="row two">
+            <label>學生姓名<input id="studentName" required></label>
+            <label>學號<input id="studentId"></label>
+          </div>
+          <div class="row two">
+            <label>科系<input id="department"></label>
+            <label>性別<select id="gender"><option value="">請選擇</option><option value="男">男</option><option value="女">女</option></select></label>
+          </div>
+          <label>現況能力摘要<textarea id="abilitySummary" rows="8" placeholder="下一階段會加入 ISP 專用 AI 潤飾"></textarea></label>
+          <div class="actions">
+            <button type="submit" class="primary">儲存草稿</button>
+            <button type="button" id="downloadBtn" class="secondary" disabled title="下一階段開放">下載 Word（下一階段）</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
