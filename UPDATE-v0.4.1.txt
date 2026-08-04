@@ -1,0 +1,5 @@
+v0.4.1 Word 下載修正
+- 修正 PizZip is not defined。
+- 改用 Docxtemplater 官方 Browser 文件所示的 UNPKG 載入方式。
+- 增加 PizZip / Docxtemplater / FileSaver 載入檢查。
+- Firebase 設定與 ISP 表單內容未變更。
