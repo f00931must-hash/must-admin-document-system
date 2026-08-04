@@ -1,0 +1,13 @@
+MUST 行政文書製作系統 v0.2.0｜ISP 新生第一階段
+
+本次更新：
+1. 移除 ISP 填寫畫面的「學年度／學期」。
+2. 依學校最新版 ISP Word 第 1～5 頁建立新生資料欄位。
+3. 草稿仍維持每位老師各自存檔。
+4. 修正「我的行政文書」查詢：不再需要 Firestore 複合索引（改為讀取本人文件後前端排序）。
+5. Word 精準填值、現況能力摘要與 AI 潤飾為下一階段。
+
+更新 GitHub：
+只需要覆蓋 index.html、app.js、style.css。
+不要覆蓋你已經設定完成的 firebase-config.js。
+firestore.rules 本次不需要修改。

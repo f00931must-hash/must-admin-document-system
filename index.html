@@ -1,85 +1,32 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MUST 行政文書製作系統</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div id="loginView" class="center-card">
-    <h1>行政表單製作入口</h1>
-    <p>明新科技大學 資源教室</p>
-    <button id="loginBtn" class="primary">使用 Google 登入</button>
-  </div>
-
-  <div id="appView" class="app hidden">
-    <aside class="sidebar">
-      <h2>行政文書</h2>
-      <button class="nav active" data-view="home">📄 表單製作入口</button>
-      <button class="nav" data-view="mine">🗂️ 我的行政文書</button>
-      <div class="spacer"></div>
-      <div id="userEmail" class="user-email"></div>
-      <button id="logoutBtn" class="nav danger">登出</button>
-    </aside>
-
-    <main class="main">
-      <section id="home" class="page">
-        <div class="page-head">
-          <div>
-            <h1>行政表單製作入口</h1>
-            <p>選擇要製作的行政文書。</p>
-          </div>
-        </div>
-        <div class="form-grid">
-          <article class="form-card">
-            <span class="badge">第一份表單</span>
-            <h3>特殊教育學生個別化支持計畫 ISP</h3>
-            <p>以學校原始 Word 格式為母版，網頁填寫後產生文件。</p>
-            <button id="newIspBtn" class="primary">建立 ISP</button>
-          </article>
-          <article class="form-card muted">
-            <span class="badge">未來擴充</span>
-            <h3>其他行政文書</h3>
-            <p>ITP、會議紀錄、需求調查表等可陸續加入。</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="mine" class="page hidden">
-        <div class="page-head"><div><h1>我的行政文書</h1><p>每位老師只顯示自己的草稿與文件。</p></div></div>
-        <div id="docList" class="doc-list"></div>
-      </section>
-
-      <section id="ispEditor" class="page hidden">
-        <div class="page-head">
-          <div><h1>ISP 基礎資料</h1><p>v0.1 先驗證登入、個人存檔與資料結構；Word 精準填值下一階段接上。</p></div>
-          <button id="backBtn" class="secondary">返回</button>
-        </div>
-        <form id="ispForm" class="editor-card">
-          <input type="hidden" id="docId" />
-          <div class="row two">
-            <label>學年度<input id="academicYear" type="number" required></label>
-            <label>學期<select id="semester"><option value="1">第一學期</option><option value="2">第二學期</option></select></label>
-          </div>
-          <div class="row two">
-            <label>學生姓名<input id="studentName" required></label>
-            <label>學號<input id="studentId"></label>
-          </div>
-          <div class="row two">
-            <label>科系<input id="department"></label>
-            <label>性別<select id="gender"><option value="">請選擇</option><option value="男">男</option><option value="女">女</option></select></label>
-          </div>
-          <label>現況能力摘要<textarea id="abilitySummary" rows="8" placeholder="下一階段會加入 ISP 專用 AI 潤飾"></textarea></label>
-          <div class="actions">
-            <button type="submit" class="primary">儲存草稿</button>
-            <button type="button" id="downloadBtn" class="secondary" disabled title="下一階段開放">下載 Word（下一階段）</button>
-          </div>
-        </form>
-      </section>
-    </main>
-  </div>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MUST 行政文書製作系統</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="loginView" class="center-card"><h1>行政表單製作入口</h1><p>明新科技大學 資源教室</p><button id="loginBtn" class="primary">使用 Google 登入</button></div>
+<div id="appView" class="app hidden"><aside class="sidebar"><h2>行政文書</h2><button class="nav active" data-view="home">📄 表單製作入口</button><button class="nav" data-view="mine">🗂️ 我的行政文書</button><div class="spacer"></div><div id="userEmail" class="user-email"></div><button id="logoutBtn" class="nav danger">登出</button></aside><main class="main">
+<section id="home" class="page"><div class="page-head"><div><h1>行政表單製作入口</h1><p>選擇要製作的行政文書。</p></div></div><div class="form-grid"><article class="form-card"><span class="badge">新生優先</span><h3>特殊教育學生個別化支持計畫 ISP</h3><p>第一階段先完成官方表格第 1～5 頁資料建檔。</p><button id="newIspBtn" class="primary">建立 ISP</button></article><article class="form-card muted"><span class="badge">未來擴充</span><h3>其他行政文書</h3><p>後續可加入 ITP、會議紀錄、需求調查表等。</p></article></div></section>
+<section id="mine" class="page hidden"><div class="page-head"><div><h1>我的行政文書</h1><p>只顯示目前登入老師自己的文件。</p></div></div><div id="docList" class="doc-list"></div></section>
+<section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>特殊教育學生個別化支持計畫 ISP</h1><p>第一階段｜依學校最新版 Word 第 1～5 頁欄位建檔</p></div><button id="backBtn" class="secondary">返回</button></div>
+<form id="ispForm" class="editor-card"><input type="hidden" id="docId">
+<div class="notice">系統會在背景記錄文件建立時間供「我的行政文書」排序；不會把學年度／學期自行加入正式 ISP Word。</div>
+<h2>壹、基本資料與能力描述</h2><h3>一、學生基本資料</h3>
+<div class="row three"><label>填表日期<input name="fillDate" type="date"></label><label>姓名<input name="studentName" required></label><label>性別<select name="gender"><option value="">請選擇</option><option>男</option><option>女</option></select></label></div>
+<div class="row three"><label>生日<input name="birthday" type="date"></label><label>身分證字號<input name="nationalId"></label><label>學號<input name="studentId"></label></div>
+<fieldset><legend>學制</legend><div class="checks"><label><input type="checkbox" name="schoolSystem" value="大學部">大學部</label><label><input type="checkbox" name="schoolSystem" value="研究所碩士班">研究所碩士班</label><label><input type="checkbox" name="schoolSystem" value="進修部">進修部</label><label><input type="checkbox" name="schoolSystem" value="其他">其他</label></div></fieldset>
+<div class="row three"><label>科系<input name="department"></label><label>入學時間<input name="admissionDate" type="date"></label><label>血型<input name="bloodType"></label></div>
+<div class="row two"><label>離校時間（由輔導人員填寫）<input name="leaveDate" type="date"></label><label>E-mail<input name="email" type="email"></label></div>
+<fieldset><legend>入學方式</legend><div class="checks"><label><input type="checkbox" name="admissionMethod" value="一般入學考試">一般入學考試</label><label><input type="checkbox" name="admissionMethod" value="身心障礙甄試">身心障礙甄試</label><label><input type="checkbox" name="admissionMethod" value="推薦甄選">推薦甄選</label><label><input type="checkbox" name="admissionMethod" value="轉學考">轉學考</label><label><input type="checkbox" name="admissionMethod" value="其他">其他</label></div><label>其他說明<input name="admissionMethodOther"></label></fieldset>
+<fieldset><legend>住址／就學期間通訊</legend><div class="checks"><label><input type="checkbox" name="livingType" value="自家">自家</label><label><input type="checkbox" name="livingType" value="校舍">校舍</label><label><input type="checkbox" name="livingType" value="外宿">外宿</label><label><input type="checkbox" name="livingType" value="其他">其他</label></div><label>通訊地址<input name="mailingAddress"></label><label>戶籍地址<input name="registeredAddress"></label><label class="inline-check"><input type="checkbox" name="registeredSame" value="是">戶籍同上</label></fieldset>
+<div class="row three"><label>寢電<input name="dormPhone"></label><label>住宅電話<input name="homePhone"></label><label>手機<input name="mobile"></label></div>
+<fieldset><legend>身心障礙手冊（證明）／其他證明</legend><div class="checks"><label><input type="radio" name="disabilityCertificate" value="有">有</label><label><input type="radio" name="disabilityCertificate" value="無">無</label></div><div class="row three"><label>手冊記載類別<input name="certificateCategory"></label><label>程度<input name="certificateLevel"></label><label>ICD<input name="icd"></label></div><div class="row two"><label>鑑定日期<input name="assessmentDate" type="date"></label><label>重新鑑定日期<input name="reassessmentDate" type="date"></label></div><div class="checks"><label><input type="checkbox" name="otherCertificate" value="鑑輔會證明">鑑輔會證明</label><label><input type="checkbox" name="otherCertificate" value="醫院診斷證明">醫院診斷證明</label></div><div class="row three"><label>證書編號<input name="certificateNo"></label><label>障別<input name="disabilityType"></label><label>醫院診斷證明最近文號<input name="hospitalDocNo"></label></div></fieldset>
+<label>障礙特徵<textarea name="disabilityFeatures" rows="3"></textarea></label><div class="checks"><label><input type="radio" name="onsetType" value="先天">致障時間：先天</label><label><input type="radio" name="onsetType" value="後天">後天</label></div><div class="row three"><label>後天致障年齡<input name="onsetAge"></label><label>平時就診醫院<input name="hospital"></label><label>主治醫師<input name="doctor"></label></div><label>致障原因<textarea name="disabilityCause" rows="2"></textarea></label><label>治療經過<textarea name="treatmentHistory" rows="2"></textarea></label><label>障礙現況（目前復原情形、身體健康狀況、是否繼續接受治療）<textarea name="currentDisabilityStatus" rows="3"></textarea></label>
+<h3>身體狀況／健康檢查</h3><div class="row three"><label>身高（公分）<input name="height"></label><label>體重（公斤）<input name="weight"></label><label>其他健康描述<input name="healthNote"></label></div><div class="row four"><label>裸視左<input name="visionRawLeft"></label><label>裸視右<input name="visionRawRight"></label><label>矯正後左<input name="visionCorrectedLeft"></label><label>矯正後右<input name="visionCorrectedRight"></label></div><div class="row four"><label>裸耳左（dB）<input name="hearingRawLeft"></label><label>裸耳右（dB）<input name="hearingRawRight"></label><label>輔具後左（dB）<input name="hearingAidLeft"></label><label>輔具後右（dB）<input name="hearingAidRight"></label></div><div class="checks"><label><input type="checkbox" name="hearingDevice" value="助聽器">助聽器</label><label><input type="checkbox" name="hearingDevice" value="人工電子耳">人工電子耳</label></div>
+<fieldset><legend>能力狀況</legend><label>體力（舉、扔、推、拉、抓、握等）<input name="physicalStrength"></label><label>姿態（彎腰、跪蹲、匍匐、平衡等）<input name="posture"></label><label>行動（行走、坐、立、攀登、爬行、手指運轉等）<input name="mobility"></label><label>溝通（口語、國語、台語、客語、手語、讀唇、筆談等）<input name="communication"></label><label>定向<input name="orientation"></label><label>動作能力<input name="motorAbility"></label><label>反應狀況<select name="reaction"><option value="">請選擇</option><option>反應靈敏</option><option>反應尚可</option><option>反應遲緩</option></select></label><div class="checks"><label><input type="radio" name="needAssistiveDevice" value="否">不需要輔具</label><label><input type="radio" name="needAssistiveDevice" value="是">需要輔具</label></div><label>何種輔具<input name="assistiveDeviceType"></label></fieldset>
+<fieldset><legend>緊急聯絡人</legend><div class="row three"><label>姓名<input name="emergencyName"></label><label>關係<input name="emergencyRelation"></label><label>手機<input name="emergencyMobile"></label></div><div class="row three"><label>公司電話<input name="emergencyCompanyPhone"></label><label>住家電話<input name="emergencyHomePhone"></label><label>E-mail<input name="emergencyEmail"></label></div><label>住址<input name="emergencyAddress"></label></fieldset>
+<fieldset><legend>特殊才能／專長</legend><div class="checks"><label><input type="checkbox" name="talents" value="唱歌">唱歌</label><label><input type="checkbox" name="talents" value="樂器">樂器</label><label><input type="checkbox" name="talents" value="舞蹈">舞蹈</label><label><input type="checkbox" name="talents" value="運動">運動</label><label><input type="checkbox" name="talents" value="美演">美演</label><label><input type="checkbox" name="talents" value="語言">語言</label><label><input type="checkbox" name="talents" value="手工藝">手工藝</label><label><input type="checkbox" name="talents" value="機械">機械</label><label><input type="checkbox" name="talents" value="網頁設計">網頁設計</label><label><input type="checkbox" name="talents" value="撰寫程式">撰寫程式</label><label><input type="checkbox" name="talents" value="文藝創作">文藝創作</label><label><input type="checkbox" name="talents" value="手語翻譯">手語翻譯</label><label><input type="checkbox" name="talents" value="表演">表演</label></div><label>其他<input name="talentsOther"></label></fieldset>
+<fieldset><legend>學經歷／服務與工作經驗</legend><label>高中（職）學校／機構<input name="highSchool"></label><div class="checks"><label><input type="checkbox" name="highSchoolType" value="普通班">普通班</label><label><input type="checkbox" name="highSchoolType" value="特殊學校">特殊學校</label><label><input type="checkbox" name="highSchoolType" value="資源班">資源班</label><label><input type="checkbox" name="highSchoolType" value="特殊班">特殊班</label><label><input type="checkbox" name="highSchoolType" value="巡迴輔導">巡迴輔導</label></div><label>幹部經驗<textarea name="cadreExperience" rows="3"></textarea></label><label>社團經驗<textarea name="clubExperience" rows="3"></textarea></label><label>工作經驗<textarea name="workExperience" rows="3"></textarea></label></fieldset>
+<fieldset><legend>交通與輔具</legend><div class="checks"><label><input type="checkbox" name="transport" value="大眾運輸">大眾運輸</label><label><input type="checkbox" name="transport" value="無法自行上學">無法自行上學</label><label><input type="checkbox" name="transport" value="自行開車">自行開車</label><label><input type="checkbox" name="transport" value="自行騎機車">自行騎機車</label><label><input type="checkbox" name="transport" value="步行">步行</label><label><input type="checkbox" name="transport" value="其他">其他</label></div><div class="checks"><label><input type="checkbox" name="license" value="汽車">汽車駕照</label><label><input type="checkbox" name="license" value="機車">機車駕照</label></div><label>現階段使用的輔具／需求與使用狀況<textarea name="assistiveDeviceStatus" rows="4"></textarea></label></fieldset>
+<h3>二、家庭狀況</h3><label>家庭成員資料（稱謂、姓名、教育程度、職業、工作單位、聯絡電話、備註）<textarea name="familyMembers" rows="6"></textarea></label><div class="row four"><label>排行<input name="birthOrder"></label><label>兄<input name="brothersOlder"></label><label>姊<input name="sistersOlder"></label><label>弟／妹<input name="youngerSiblings"></label></div><div class="row two"><label>父母關係<select name="parentsRelationship"><option value="">請選擇</option><option>同居</option><option>分居</option><option>離異</option><option>其他</option></select></label><label>個人婚姻狀況<select name="maritalStatus"><option value="">請選擇</option><option>未婚</option><option>已婚</option></select></label></div><div class="row three"><label>子女人數<input name="childrenCount"></label><label>主要照顧者<input name="primaryCaregiver"></label><label>家中主要使用語言<input name="familyLanguage"></label></div><div class="row two"><label>父母是否會說／瞭解國語<select name="parentsMandarin"><option value="">請選擇</option><option>會</option><option>不會</option></select></label><label>家庭經濟狀況<select name="economicStatus"><option value="">請選擇</option><option>富裕</option><option>小康</option><option>清寒</option></select></label></div><label>家中其他特殊個案／其他特殊身分說明<textarea name="familySpecialStatus" rows="2"></textarea></label>
+<fieldset><legend>家庭需求轉介</legend><div class="checks"><label><input type="checkbox" name="familyReferral" value="生活輔助">生活輔助</label><label><input type="checkbox" name="familyReferral" value="獎助學金">獎助學金</label><label><input type="checkbox" name="familyReferral" value="輔具提供">輔具提供</label><label><input type="checkbox" name="familyReferral" value="醫療諮詢">醫療諮詢</label><label><input type="checkbox" name="familyReferral" value="居家照護/喘息服務訊息">居家照護/喘息服務訊息</label><label><input type="checkbox" name="familyReferral" value="身障生心理諮商/輔導">身障生心理諮商/輔導</label><label><input type="checkbox" name="familyReferral" value="特殊教育諮詢">特殊教育諮詢</label><label><input type="checkbox" name="familyReferral" value="職訓及就輔">職訓及就輔</label></div><label>其他<input name="familyReferralOther"></label></fieldset>
+<div class="row two"><label>家長期望<select name="parentExpectation"><option value="">請選擇</option><option>支持就學</option><option>不支持就學</option><option>沒意見</option></select></label><label>自我期望<select name="selfExpectation"><option value="">請選擇</option><option>就讀科系符合興趣</option><option>就讀科系不符合興趣</option></select></label></div><label>自我期望補充<input name="selfExpectationNote"></label>
+<h3>三、健康狀況</h3><fieldset><legend>（一）身體特殊症狀</legend><div class="checks"><label><input type="checkbox" name="physicalSymptoms" value="無">無</label><label><input type="checkbox" name="physicalSymptoms" value="癲癇">癲癇</label><label><input type="checkbox" name="physicalSymptoms" value="心臟病">心臟病</label><label><input type="checkbox" name="physicalSymptoms" value="腦性麻痺">腦性麻痺</label><label><input type="checkbox" name="physicalSymptoms" value="妥瑞症">妥瑞症</label><label><input type="checkbox" name="physicalSymptoms" value="氣喘病">氣喘病</label><label><input type="checkbox" name="physicalSymptoms" value="高血壓">高血壓</label><label><input type="checkbox" name="physicalSymptoms" value="低血壓">低血壓</label><label><input type="checkbox" name="physicalSymptoms" value="糖尿病">糖尿病</label><label><input type="checkbox" name="physicalSymptoms" value="便溺失禁">便溺失禁</label><label><input type="checkbox" name="physicalSymptoms" value="蠶豆症">蠶豆症</label><label><input type="checkbox" name="physicalSymptoms" value="骨骼易脆">骨骼易脆</label><label><input type="checkbox" name="physicalSymptoms" value="腦膜炎">腦膜炎</label><label><input type="checkbox" name="physicalSymptoms" value="脊柱側彎">脊柱側彎</label><label><input type="checkbox" name="physicalSymptoms" value="精神疾病">精神疾病</label><label><input type="checkbox" name="physicalSymptoms" value="甲狀腺機能低下">甲狀腺機能低下</label><label><input type="checkbox" name="physicalSymptoms" value="甲狀腺機能亢進">甲狀腺機能亢進</label><label><input type="checkbox" name="physicalSymptoms" value="惡性腫瘤">惡性腫瘤</label><label><input type="checkbox" name="physicalSymptoms" value="地中海貧血">地中海貧血</label><label><input type="checkbox" name="physicalSymptoms" value="暈眩">暈眩</label><label><input type="checkbox" name="physicalSymptoms" value="長期失眠">長期失眠</label><label><input type="checkbox" name="physicalSymptoms" value="過敏">過敏</label></div><label>過敏原／其他<input name="symptomsOther"></label></fieldset>
+<fieldset><legend>（二）服用藥物</legend><div class="checks"><label><input type="radio" name="medicationUse" value="無">無</label><label><input type="radio" name="medicationUse" value="有">有</label></div><label>藥物資料（藥物名稱、主要功用、開始服藥日期、服用頻率、份量、副作用、下次改藥時間）<textarea name="medicationDetails" rows="5"></textarea></label></fieldset><label>（三）其他特殊生理健康描述<textarea name="otherHealthDescription" rows="4"></textarea></label>
+<div class="actions sticky-actions"><button type="submit" class="primary">儲存草稿</button><button type="button" id="downloadBtn" class="secondary" disabled title="下一階段接上官方 Word 精準填值">下載 Word（下一階段）</button></div>
+</form></section></main></div><script type="module" src="app.js"></script></body></html>
