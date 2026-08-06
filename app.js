@@ -17,7 +17,7 @@ onAuthStateChanged(auth,user=>{currentUser=user;if(user){$("loginView").classLis
 
 function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
-function dateText(v){ if(!v) return ""; const p=v.split("-"); const y=Number(p[0])-1911; return `${y}年${Number(p[1])}月${Number(p[2])}日`; }年${Number(p[1])}月${Number(p[2])}日`; }
+function dateText(v){ if(!v) return ""; const p=v.split("-"); const y=Number(p[0])-1911; return `${y}年${Number(p[1])}月${Number(p[2])}日`; }
 function exportData(f){
   const sys=f.schoolSystem||"";
   const adm=f.admissionMethod||"";
