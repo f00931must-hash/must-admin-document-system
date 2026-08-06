@@ -17,23 +17,29 @@ onAuthStateChanged(auth,user=>{currentUser=user;if(user){$("loginView").classLis
 
 function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
-function dateText(v){ if(!v) return ""; const p=v.split("-"); return `${p[0]}年${Number(p[1])}月${Number(p[2])}日`; }
+function dateText(v){ if(!v) return ""; const p=v.split("-"); const y=Number(p[0])-1911; return `${y}年${Number(p[1])}月${Number(p[2])}日`; }年${Number(p[1])}月${Number(p[2])}日`; }
 function exportData(f){
   const sys=f.schoolSystem||"";
   const adm=f.admissionMethod||"";
   return {
     ...f,
+    fillDateText: dateText(f.fillDate),
     birthdayText: dateText(f.birthday), admissionDateText: dateText(f.admissionDate),
     genderChecks:`${markOne(f.gender,"男")}男  ${markOne(f.gender,"女")}女`,
     schoolSystemChecks:`${markOne(sys,"大學部")}大學部  ${markOne(sys,"研究所碩士班")}研究所碩士班  ${markOne(sys,"進修部")}進修部  ${markOne(sys,"其他")}其他${sys==="其他"&&f.schoolSystemOther?`：${f.schoolSystemOther}`:""}`,
     admissionMethodChecks:`${markOne(adm,"一般入學考試")}一般入學考試  ${markOne(adm,"身心障礙甄試")}身心障礙甄試\n${markOne(adm,"推薦甄選")}推薦甄選  ${markOne(adm,"轉學考")}轉學考  ${markOne(adm,"其他")}其他${adm==="其他"&&f.admissionMethodOther?`：${f.admissionMethodOther}`:""}`,
-    addressBlock:`就學期間通訊（${markOne(f.livingType,"自家")}自家 ${markOne(f.livingType,"校舍")}校舍 ${markOne(f.livingType,"外宿")}外宿 ${markOne(f.livingType,"其他")}其他）\n通訊：${f.mailingAddress||""}\n戶籍：${markMany(f.registeredSame,"是")}同上 ${f.registeredAddress||""}`,
-    phoneBlock:`寢電：${f.dormPhone||""}\n住宅：${f.homePhone||""}\n手機：${f.mobile||""}`,
+    addressBlock:`就學期間通訊（${markOne(f.livingType,"自家")}自家 ${markOne(f.livingType,"校舍")}校舍 ${markOne(f.livingType,"外宿")}外宿 ${markOne(f.livingType,"其他")}其他）
+通訊：${f.mailingAddress||""}
+戶籍：${markMany(f.registeredSame,"是")}同上 ${f.registeredAddress||""}`,
+    phoneBlock:`寢電：${f.dormPhone||""}
+住宅：${f.homePhone||""}
+手機：${f.mobile||""}`,
     certificateBlock:`身心障礙手冊（證明）：${markOne(f.disabilityCertificate,"有")}有（手冊記載類別：${f.certificateCategory||""} 程度：${f.certificateLevel||""}）ICD：${f.icd||""}\n鑑定日期：${dateText(f.assessmentDate)}；重新鑑定日期：${dateText(f.reassessmentDate)}\n${markOne(f.disabilityCertificate,"無")}無，其他：${markMany(f.otherCertificate,"鑑輔會證明")}鑑輔會證明（證書編號：${f.certificateNo||""} 障別：${f.disabilityType||""}） ${markMany(f.otherCertificate,"醫院診斷證明")}醫院診斷證明（最近文號：${f.hospitalDocNo||""}）`,
     disabilityBlock:`障礙特徵：${f.disabilityFeatures||""}\n致障時間：${markOne(f.onsetType,"先天")}先天 ${markOne(f.onsetType,"後天")}後天（年齡：${f.onsetAge||""}歲）`,
     causeBlock:`致障原因：${f.disabilityCause||""}`, treatmentBlock:`治療經過：${f.treatmentHistory||""}`, statusBlock:`障礙現況：（目前復原情形？身體健康狀況？繼續接受治療？）\n${f.currentDisabilityStatus||""}`,
     visionBlock:`（裸視）左：${f.visionRawLeft||""}度 右：${f.visionRawRight||""}度\n（矯正後）左：${f.visionCorrectedLeft||""}度 右：${f.visionCorrectedRight||""}度`,
-    hearingBlock:`（裸耳）左：${f.hearingRawLeft||""} 右：${f.hearingRawRight||""}（dB）`,
+    hearingBlock:`（裸耳）左：${f.hearingRawLeft||""} 右：${f.hearingRawRight||""}（dB）
+${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"人工電子耳")}人工電子耳 左：${f.hearingAidLeft||""} 右：${f.hearingAidRight||""}（dB）`,
     strengthChecks:["舉","扔","推","拉","抓","握"].map(x=>`${markMany(f.strength,x)}${x}`).join(""),
     postureChecks:["彎腰","跪蹲","匍匐","平衡"].map(x=>`${markMany(f.posture,x)}${x}`).join(""),
     mobilityChecks:["行走","坐","立","攀登","爬行","手指運轉"].map(x=>`${markMany(f.mobility,x)}${x}`).join(""),
@@ -42,7 +48,8 @@ function exportData(f){
     motorChecks:["粗大動作","精細動作","協調動作"].map(x=>`${markMany(f.motorAbility,x)}${x}`).join(""),
     reactionChecks:["反應靈敏","反應尚可","反應遲緩"].map(x=>`${markOne(f.reaction,x)}${x}`).join("\n"),
     assistiveBlock:`${markOne(f.needAssistiveDevice,"否")}否\n${markOne(f.needAssistiveDevice,"是")}是 何種輔具：${f.assistiveDeviceType||""}`,
-    emergencyPhoneBlock:`公司：${f.emergencyCompanyPhone||""}\n住家：${f.emergencyHomePhone||""}\n手機：${f.emergencyMobile||""}`
+    emergencyPhoneBlock:`公司：${f.emergencyCompanyPhone||""}\n住家：${f.emergencyHomePhone||""}\n手機：${f.emergencyMobile||""}\nE-mail：${f.emergencyEmail||""}`,
+    emergencyAddressBlock:`（${markOne(f.emergencyAddressType,"同戶籍")}同戶籍 ${markOne(f.emergencyAddressType,"公司")}公司 ${markOne(f.emergencyAddressType,"其他")}其他） ${f.emergencyAddress||""}`
   };
 }
 $("downloadBtn").onclick=async()=>{
@@ -51,7 +58,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.docx",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
