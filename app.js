@@ -21,6 +21,8 @@ function markMany(values, option){ return Array.isArray(values) && values.includ
 function checkLines(values, options){ return options.map(x=>`${markMany(values,x)} ${x}`).join("\n"); }
 function checkInline(values, options){ return options.map(x=>`${markMany(values,x)}${x}`).join("　"); }
 function ratingLine(label, value, options){ return `${label} ${options.map(x=>`${markOne(value,x)}${x}`).join(" ")}`; }
+function ratingOptions(value, options){return options.map(x=>`${markOne(value,x)}${x}`).join(" ");}
+function compactRatingLine(label, value, options){return `${label}${options.map(x=>`${markOne(value,x)}${x}`).join("")}`;}
 function serviceOption(values, option, label=option){return `${markMany(values,option)}${label}`;}
 const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2"];
 function dateParts(v){
@@ -113,12 +115,20 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
       ratingLine("(5)尋求資源能力",f.strengthResourceSeeking,["良好","尚可","弱"]), ratingLine("(6)支持系統資源",f.strengthSupportSystem,["良好","尚可","弱"]),
       ratingLine("(7)家人的互動與關懷",f.strengthFamilyInteraction,["良好","尚可","弱"]), ratingLine("(8)家庭經濟狀況",f.strengthFamilyEconomy,["良好","尚可","弱"])
     ].join("\n"),
+    strengthLine1:ratingOptions(f.strengthRelationship,["良好","尚可","弱"]),
+    strengthLine2:ratingOptions(f.strengthEmotion,["良好","尚可","弱"]),
+    strengthLine3:ratingOptions(f.strengthIllnessAwareness,["良好","尚可","弱"]),
+    strengthLine4:ratingOptions(f.strengthProblemSolving,["良好","尚可","弱"]),
+    strengthLine5:ratingOptions(f.strengthResourceSeeking,["良好","尚可","弱"]),
+    strengthLine6:ratingOptions(f.strengthSupportSystem,["良好","尚可","弱"]),
+    strengthLine7:ratingOptions(f.strengthFamilyInteraction,["良好","尚可","弱"]),
+    strengthLine8:ratingOptions(f.strengthFamilyEconomy,["良好","尚可","弱"]),
     analysisBlock:[
-      ratingLine("(1)生活自理能力",f.analysisSelfCare,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(2)職(學)業能力",f.analysisStudyWork,["無需協助","需部份協助","完全需要協助","本項不適用"]),
-      ratingLine("(3)行動能力",f.analysisMobility,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(4)交通能力",f.analysisTransport,["無需協助","需部份協助","完全需要協助","本項不適用"]),
-      ratingLine("(5)通訊能力",f.analysisCommunication,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(6)認知理解能力",f.analysisUnderstanding,["完全能理解","部份能理解","完全不能理解","本項不適用"]),
-      ratingLine("(7)語言表達能力",f.analysisExpression,["完全能表達","部份能表達","完全不能表達","本項不適用"]), ratingLine("(8)人際互動能力",f.analysisInteraction,["能力良好","能力尚可","完全不能理解","本項不適用"]),
-      ratingLine("(9)休閒能力",f.analysisLeisure,["能自行參與","部份能參與","完全無法參與","本項不適用"])
+      compactRatingLine("(1)生活自理能力",f.analysisSelfCare,["無需協助","需部份協助","完全需要協助","本項不適用"]), compactRatingLine("(2)職(學)業能力",f.analysisStudyWork,["無需協助","需部份協助","完全需要協助","本項不適用"]),
+      compactRatingLine("(3)行動能力",f.analysisMobility,["無需協助","需部份協助","完全需要協助","本項不適用"]), compactRatingLine("(4)交通能力",f.analysisTransport,["無需協助","需部份協助","完全需要協助","本項不適用"]),
+      compactRatingLine("(5)通訊能力",f.analysisCommunication,["無需協助","需部份協助","完全需要協助","本項不適用"]), compactRatingLine("(6)認知理解能力",f.analysisUnderstanding,["完全能理解","部份能理解","完全不能理解","本項不適用"]),
+      compactRatingLine("(7)語言表達能力",f.analysisExpression,["完全能表達","部份能表達","完全不能表達","本項不適用"]), compactRatingLine("(8)人際互動能力",f.analysisInteraction,["能力良好","能力尚可","完全不能理解","本項不適用"]),
+      compactRatingLine("(9)休閒能力",f.analysisLeisure,["能自行參與","部份能參與","完全無法參與","本項不適用"])
     ].join("\n"),
     learningSupportBlock:`${checkLines(f.learningSupport,["無特殊學習支持需求","課業輔導（視學生主動申請或需求提供）","筆記／同儕協助","學習輔具協助","考試調整（延長時間／獨立考場等）","課業提醒與關懷（出缺席／作業狀況）","必要時協助與任課教師溝通","其他"])}\n說明：${f.learningSupportNote||""}`,
     emotionalSupportBlock:`${checkLines(f.emotionalSupport,["無特殊需求","個別關懷晤談","團體輔導／主題活動參與","課業壓力與情緒支持","人際互動適應關懷","轉介心理諮商資源","其他"])}\n說明：${f.emotionalSupportNote||""}`,
@@ -278,7 +288,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.10",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.11",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
