@@ -17,7 +17,10 @@ onAuthStateChanged(auth,user=>{currentUser=user;if(user){$("loginView").classLis
 
 function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
-const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2","medStart3","medNextChange3"];
+function checkLines(values, options){ return options.map(x=>`${markMany(values,x)} ${x}`).join("\n"); }
+function checkInline(values, options){ return options.map(x=>`${markMany(values,x)}${x}`).join("　"); }
+function ratingLine(label, value, options){ return `${label}　${options.map(x=>`${markOne(value,x)}${x}`).join(" ")}`; }
+const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2"];
 function dateParts(v){
   const m=String(v??'').trim().match(/^(?:民國\s*)?(\d{2,4})\s*[年\/.\-]\s*(\d{1,2})\s*[月\/.\-]\s*(\d{1,2})\s*日?$/);
   if(!m)return null;
@@ -92,6 +95,41 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     familyReferralBlock:`${["生活輔助","獎助學金","輔具提供","醫療諮詢","居家照護/喘息服務訊息","身障生心理諮商/輔導","特殊教育諮詢","職訓及就輔","其他"].map(x=>`${markMany(f.familyReferral,x)}${x}`).join("　")}${f.familyReferralOther?`：${f.familyReferralOther}`:""}`,
     parentExpectationChecks:["支持就學","不支持就學","沒意見"].map(x=>`${markOne(f.parentExpectation,x)}${x}`).join("　"),
     selfExpectationBlock:`${markOne(f.selfExpectation,"就讀科系符合興趣")}就讀科系符合興趣　${markOne(f.selfExpectation,"就讀科系不符合興趣")}就讀科系不符合興趣：${markMany(f.selfExpectationAction,"考慮轉系")}考慮轉系　${markMany(f.selfExpectationAction,"其他")}其他${f.selfExpectationNote?`：${f.selfExpectationNote}`:""}`
+    ,physicalSymptomsPresenceChecks:`${markOne(f.physicalSymptomsPresence,"無")}無　${markOne(f.physicalSymptomsPresence,"有")}有（請勾選或填寫下列選項）`,
+    physicalSymptomsLine1:["癲癇","心臟病","腦性麻痺","妥瑞症","氣喘病","高血壓"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
+    physicalSymptomsLine2:["低血壓","糖尿病","便溺失禁","蠶豆症","骨骼易脆","腦膜炎"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
+    physicalSymptomsLine3:["脊柱側彎","精神疾病","甲狀腺機能低下","甲狀腺機能亢進"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
+    physicalSymptomsLine4:["惡性腫瘤","地中海貧血","暈眩","長期失眠"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
+    physicalSymptomsLine5:`${markMany(f.physicalSymptoms,"過敏")}過敏，過敏原：${f.allergen||""}　${markMany(f.physicalSymptoms,"其他")}其他：${f.symptomsOther||""}`,
+    medicationUseChecks:`${markOne(f.medicationUse,"無")}無　${markOne(f.medicationUse,"有")}有（請填寫下表）`,
+    otherHealthBlock:`${markOne(f.otherHealthPresence,"無")}無　${markOne(f.otherHealthPresence,"有")}有，請說明：${f.otherHealthDescription||""}`,
+    strengthsBlock:[
+      ratingLine("(1)建立人際關係能力",f.strengthRelationship,["良好","尚可","弱"]), ratingLine("(2)情緒控制能力",f.strengthEmotion,["良好","尚可","弱"]),
+      ratingLine("(3)個人疾病認識能力",f.strengthIllnessAwareness,["良好","尚可","弱"]), ratingLine("(4)解決問題及處理狀況能力",f.strengthProblemSolving,["良好","尚可","弱"]),
+      ratingLine("(5)尋求資源能力",f.strengthResourceSeeking,["良好","尚可","弱"]), ratingLine("(6)支持系統資源",f.strengthSupportSystem,["良好","尚可","弱"]),
+      ratingLine("(7)家人的互動與關懷",f.strengthFamilyInteraction,["良好","尚可","弱"]), ratingLine("(8)家庭經濟狀況",f.strengthFamilyEconomy,["良好","尚可","弱"])
+    ].join("\n"),
+    analysisBlock:[
+      ratingLine("(1)生活自理能力",f.analysisSelfCare,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(2)職(學)業能力",f.analysisStudyWork,["無需協助","需部份協助","完全需要協助","本項不適用"]),
+      ratingLine("(3)行動能力",f.analysisMobility,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(4)交通能力",f.analysisTransport,["無需協助","需部份協助","完全需要協助","本項不適用"]),
+      ratingLine("(5)通訊能力",f.analysisCommunication,["無需協助","需部份協助","完全需要協助","本項不適用"]), ratingLine("(6)認知理解能力",f.analysisUnderstanding,["完全能理解","部份能理解","完全不能理解","本項不適用"]),
+      ratingLine("(7)語言表達能力",f.analysisExpression,["完全能表達","部份能表達","完全不能表達","本項不適用"]), ratingLine("(8)人際互動能力",f.analysisInteraction,["能力良好","能力尚可","完全不能理解","本項不適用"]),
+      ratingLine("(9)休閒能力",f.analysisLeisure,["能自行參與","部份能參與","完全無法參與","本項不適用"])
+    ].join("\n"),
+    learningSupportBlock:`${checkLines(f.learningSupport,["無特殊學習支持需求","課業輔導（視學生主動申請或需求提供）","筆記／同儕協助","學習輔具協助","考試調整（延長時間／獨立考場等）","課業提醒與關懷（出缺席／作業狀況）","必要時協助與任課教師溝通","其他"])}\n說明：${f.learningSupportNote||""}`,
+    emotionalSupportBlock:`${checkLines(f.emotionalSupport,["無特殊需求","個別關懷晤談","團體輔導／主題活動參與","課業壓力與情緒支持","人際互動適應關懷","轉介心理諮商資源","其他"])}\n說明：${f.emotionalSupportNote||""}`,
+    environmentSupportBlock:`${checkLines(f.environmentSupport,["無特殊需求","需無障礙環境調整","需生活同儕協助","作息與時間管理協助","交通費補助（無法自行上下學）","其他"])}\n說明：${f.environmentSupportNote||""}`,
+    academicPlanningSupportBlock:`${checkLines(f.academicPlanningSupport,["畢業學分檢視與修課進度追蹤","選課諮詢與修課建議","修課負荷評估與調整建議","課程衝堂與學分風險提醒","畢業進度與延畢風險評估","必要時協助與系上溝通修課需求","其他"])}\n說明：${f.academicPlanningSupportNote||""}`,
+    careerSupportBlock:`${checkLines(f.careerSupport,["生涯探索／討論","職涯諮詢／評估","畢業準備與轉銜規劃討論","履歷／自傳協助（修改與建議）","就業準備支持（基本面試準備／資訊提供）","個別轉銜會議","轉銜資源連結（就業中心等）"])}\n說明：${f.careerSupportNote||""}`,
+    adminSupportBlock:`${checkLines(f.adminSupport,["特教生獎助學金申請協助","校內外資源資訊提供：校內－高教深耕計畫","校內行政資源申請協助","校外資源轉介與申請協助","其他"])}\n其他：${f.adminSupportNote||""}`,
+    supportAdjustmentBlock:`${checkLines(f.supportAdjustment,["現有支持適切，持續維持","需調整部分支持內容","需新增或加強支持服務","需減少或結束部分支持","其他"])}\n其他：${f.supportAdjustmentNote||""}`,
+    relatedServicesBlock:`（1）經濟補助\n${checkInline(f.relatedServices,["低收入戶生活補助","身心障礙者生活補助","身心障礙者津貼","健保自付保費補助","急難救助","學雜費減免補助","獎助學金","生活及復健輔助器具補助","醫療補助","租賃補助"])}\n`+
+      `（2）支持性服務\n${checkInline(f.relatedServices,["居家照顧服務","臨時照顧服務","親職教育","交通服務","諮詢服務","諮商輔導服務","休閒活動"])}\n`+
+      `（3）復健與醫療服務\n${checkInline(f.relatedServices,["物理治療","職能治療","語言治療","個別心理治療","團體治療","聽力復健","精神科醫療","視力復健","營養諮詢","居家護理","居家復健","輔助器具","精神復健機構","障礙重新鑑定","重大疾病性醫療"])}\n`+
+      `（4）就學服務\n${checkInline(f.relatedServices,["教育輔具","行為輔導","課業輔導","生活輔導","職業輔導","就業輔導","工讀","校外實習"])}\n`+
+      `（5）住宿\n${checkInline(f.relatedServices,["保留床位","特殊寢室","室友安排"])}\n（6）交通\n${checkInline(f.relatedServices,["無法自行上學（政府補助800元／月）","專用停車位識別證／專用牌照"])}\n`+
+      `（7）活動參與\n${checkInline(f.relatedServices,["期初會議","迎新、送舊","校外參訪","講座","競賽活動","轉銜會議"])}\n（8）其他\n${markMany(f.relatedServices,"其他")} 其他：${f.relatedServicesNote||""}`,
+    otherServiceSuggestionsBlock:`${checkInline(f.otherServiceSuggestions,["經濟補助","居家照顧服務","臨時照顧服務","發展評估","物理治療","居家護理","職能治療","語言治療","聽力復健","視力復健","心理復健","居家復健","輔助器具","障礙再鑑定","職業輔導評量","職業訓練","就業服務","安置服務","家庭輔導","法律協助","個案管理","其他"])}\n補充：${f.otherServiceSuggestionsNote||""}`
   };
 }
 $("downloadBtn").onclick=async()=>{
@@ -100,7 +138,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.4",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.5",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
