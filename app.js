@@ -20,7 +20,7 @@ function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
 function checkLines(values, options){ return options.map(x=>`${markMany(values,x)} ${x}`).join("\n"); }
 function checkInline(values, options){ return options.map(x=>`${markMany(values,x)}${x}`).join("　"); }
-function ratingLine(label, value, options){ return `${label}　${options.map(x=>`${markOne(value,x)}${x}`).join(" ")}`; }
+function ratingLine(label, value, options){ return `${label} ${options.map(x=>`${markOne(value,x)} ${x}`).join("  ")}`; }
 const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2"];
 function dateParts(v){
   const m=String(v??'').trim().match(/^(?:民國\s*)?(\d{2,4})\s*[年\/.\-]\s*(\d{1,2})\s*[月\/.\-]\s*(\d{1,2})\s*日?$/);
@@ -32,16 +32,18 @@ function dateParts(v){
 }
 function rocInputDate(v){const p=dateParts(v);return p?`${p.y}/${String(p.month).padStart(2,'0')}/${String(p.day).padStart(2,'0')}`:String(v??'');}
 function dateText(v){const p=dateParts(v);return p?`${p.y}年${p.month}月${p.day}日`:String(v??'').trim();}
+function compactDateText(v){const p=dateParts(v);return p?`${p.y}/${String(p.month).padStart(2,'0')}/${String(p.day).padStart(2,'0')}`:String(v??'').trim();}
 function exportData(f){
   const sys=f.schoolSystem||"";
   const adm=f.admissionMethod||"";
   const rocData={...f};
   rocDateFields.forEach(name=>{rocData[name]=dateText(f[name]);});
+  ["medStart1","medNextChange1","medStart2","medNextChange2"].forEach(name=>{rocData[name]=compactDateText(f[name]);});
   return {
     ...rocData,
     fillDateText: dateText(f.fillDate),
-    birthdayText: dateText(f.birthday), admissionDateText: dateText(f.admissionDate),
-    genderChecks:`${markOne(f.gender,"男")}男  ${markOne(f.gender,"女")}女`,
+    birthdayText: compactDateText(f.birthday), admissionDateText: compactDateText(f.admissionDate),
+    genderChecks:`${markOne(f.gender,"男")}男${markOne(f.gender,"女")}女`,
     schoolSystemChecks:`${markOne(sys,"大學部")}大學部  ${markOne(sys,"研究所碩士班")}研究所碩士班  ${markOne(sys,"進修部")}進修部  ${markOne(sys,"其他")}其他${sys==="其他"&&f.schoolSystemOther?`：${f.schoolSystemOther}`:""}`,
     admissionMethodChecks:`${markOne(adm,"一般入學考試")}一般入學考試  ${markOne(adm,"身心障礙甄試")}身心障礙甄試\n${markOne(adm,"推薦甄選")}推薦甄選  ${markOne(adm,"轉學考")}轉學考  ${markOne(adm,"其他")}其他${adm==="其他"&&f.admissionMethodOther?`：${f.admissionMethodOther}`:""}`,
     addressBlock:`就學期間通訊（${markOne(f.livingType,"自家")}自家 ${markOne(f.livingType,"校舍")}校舍 ${markOne(f.livingType,"外宿")}外宿 ${markOne(f.livingType,"其他")}其他）
@@ -253,7 +255,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.8",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.9",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
