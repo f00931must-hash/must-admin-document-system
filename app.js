@@ -4,6 +4,7 @@ import { getFirestore, collection, addDoc, updateDoc, doc, query, where, getDocs
 import { firebaseConfig } from "./firebase-config.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 const $=id=>document.getElementById(id);let currentUser=null;
+const ISP_AI_ENDPOINT="https://must-resource-ai.f00931-must.workers.dev/ai/isp-summary";
 function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
 function formData(){const f=$("ispForm"),data={};for(const el of f.elements){if(!el.name||el.type==='submit'||el.type==='button')continue;if(el.type==='checkbox'){if(!data[el.name])data[el.name]=[];if(el.checked)data[el.name].push(el.value);}else if(el.type==='radio'){if(el.checked)data[el.name]=el.value;else if(!(el.name in data))data[el.name]='';}else data[el.name]=el.value;}return data;}
 function clearForm(){$("ispForm").reset();$("docId").value='';}
@@ -132,13 +133,47 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     otherServiceSuggestionsBlock:`${checkInline(f.otherServiceSuggestions,["經濟補助","居家照顧服務","臨時照顧服務","發展評估","物理治療","居家護理","職能治療","語言治療","聽力復健","視力復健","心理復健","居家復健","輔助器具","障礙再鑑定","職業輔導評量","職業訓練","就業服務","安置服務","家庭輔導","法律協助","個案管理","其他"])}\n補充：${f.otherServiceSuggestionsNote||""}`
   };
 }
+
+function getIspAiText(payload){
+  return String(payload?.polishedText ?? payload?.polished ?? payload?.text ?? payload?.result ?? payload?.output ?? "").trim();
+}
+
+document.querySelectorAll(".ai-polish-btn").forEach(button=>{
+  button.addEventListener("click",async()=>{
+    const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
+    const original=textarea?.value.trim()||"";
+    if(!original){ alert("請先輸入內容，再使用 AI 潤飾。"); textarea?.focus(); return; }
+    const oldLabel=button.textContent;
+    button.disabled=true; button.textContent="AI 潤飾中…";
+    try{
+      const response=await fetch(ISP_AI_ENDPOINT,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:original,section:button.dataset.aiSection,documentType:"ISP"})
+      });
+      let payload={};
+      try{ payload=await response.json(); }catch{}
+      if(!response.ok) throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+      const polished=getIspAiText(payload);
+      if(!polished) throw new Error("AI 沒有回傳可用內容");
+      if(window.confirm(`AI 潤飾結果：\n\n${polished}\n\n按「確定」套用到此欄；按「取消」保留原文。`)){
+        textarea.value=polished;
+        textarea.dispatchEvent(new Event("input",{bubbles:true}));
+      }
+    }catch(error){
+      console.error(error);
+      alert(error?.message||"AI 潤飾失敗，請稍後再試。");
+    }finally{ button.disabled=false; button.textContent=oldLabel; }
+  });
+});
+
 $("downloadBtn").onclick=async()=>{
   try{
     if (typeof window.PizZip === "undefined") throw new Error("Word 元件 PizZip 載入失敗，請重新整理頁面後再試");
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.5",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.6",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);

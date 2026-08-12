@@ -3,7 +3,7 @@
 <div id="appView" class="app hidden"><aside class="sidebar"><h2>行政文書</h2><button class="nav active" data-view="home">📄 表單製作入口</button><button class="nav" data-view="mine">🗂️ 我的行政文書</button><div class="spacer"></div><div id="userEmail" class="user-email"></div><button id="logoutBtn" class="nav danger">登出</button></aside><main class="main">
 <section id="home" class="page"><div class="page-head"><div><h1>行政表單製作入口</h1><p>選擇要製作的行政文書。</p></div></div><div class="form-grid"><article class="form-card"><span class="badge">新生優先</span><h3>特殊教育學生個別化支持計畫 ISP</h3><p>已依官方表格第 1～5 頁校正欄位型態與主要表格結構。</p><button id="newIspBtn" class="primary">建立 ISP</button></article><article class="form-card muted"><span class="badge">未來擴充</span><h3>其他行政文書</h3><p>後續可加入 ITP、會議紀錄、需求調查表等。</p></article></div></section>
 <section id="mine" class="page hidden"><div class="page-head"><div><h1>我的行政文書</h1><p>只顯示目前登入老師自己的文件。</p></div></div><div id="docList" class="doc-list"></div></section>
-<section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>特殊教育學生個別化支持計畫 ISP</h1><p>v0.4.2.5｜官方 Word 實際輸出測試版</p></div><button id="backBtn" class="secondary">返回</button></div>
+<section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>特殊教育學生個別化支持計畫 ISP</h1><p>v0.4.2.6｜版面校正與 ISP AI 測試版</p></div><button id="backBtn" class="secondary">返回</button></div>
 <form id="ispForm" class="editor-card official-form"><input type="hidden" id="docId">
 <div class="notice">本頁依學校最新版 ISP 第 1～5 頁欄位與選項型態校正。原 Word 為勾選的項目，網頁也以勾選／單選呈現；系統管理資訊不會寫入正式 ISP。</div>
 
@@ -101,11 +101,11 @@
 <h3>一、現況能力摘要（輔導員填寫）</h3>
 <div class="official-section">
   <h4>學生能力現況</h4>
-  <div class="official-grid cols-2">
-    <label>健康狀況<textarea name="abilityHealth" rows="3"></textarea></label><label>感官功能<textarea name="abilitySensory" rows="3"></textarea></label>
-    <label>知覺動作<textarea name="abilityMotor" rows="3"></textarea></label><label>認知能力<textarea name="abilityCognitive" rows="3"></textarea></label>
-    <label>溝通能力<textarea name="abilityCommunication" rows="3"></textarea></label><label>學業能力<textarea name="abilityAcademic" rows="3"></textarea></label>
-    <label>生活自理能力<textarea name="abilitySelfCare" rows="3"></textarea></label><label>社會化及情緒行為能力<textarea name="abilitySocialEmotional" rows="3"></textarea></label>
+  <div class="official-grid cols-2 ability-summary-grid">
+    <label>健康狀況<textarea name="abilityHealth" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilityHealth" data-ai-section="健康狀況">✨ AI 潤飾此格</button></label><label>感官功能<textarea name="abilitySensory" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilitySensory" data-ai-section="感官功能">✨ AI 潤飾此格</button></label>
+    <label>知覺動作<textarea name="abilityMotor" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilityMotor" data-ai-section="知覺動作">✨ AI 潤飾此格</button></label><label>認知能力<textarea name="abilityCognitive" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilityCognitive" data-ai-section="認知能力">✨ AI 潤飾此格</button></label>
+    <label>溝通能力<textarea name="abilityCommunication" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilityCommunication" data-ai-section="溝通能力">✨ AI 潤飾此格</button></label><label>學業能力<textarea name="abilityAcademic" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilityAcademic" data-ai-section="學業能力">✨ AI 潤飾此格</button></label>
+    <label>生活自理能力<textarea name="abilitySelfCare" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilitySelfCare" data-ai-section="生活自理能力">✨ AI 潤飾此格</button></label><label>社會化及情緒行為能力<textarea name="abilitySocialEmotional" rows="3"></textarea><button type="button" class="ai-polish-btn" data-ai-target="abilitySocialEmotional" data-ai-section="社會化及情緒行為能力">✨ AI 潤飾此格</button></label>
   </div>
 </div>
 
@@ -145,7 +145,7 @@
 <fieldset class="official-fieldset"><legend>行政與資源申請支持</legend><div class="checks"><label><input type="checkbox" name="adminSupport" value="特教生獎助學金申請協助">特教生獎助學金申請</label><label><input type="checkbox" name="adminSupport" value="校內外資源資訊提供：校內－高教深耕計畫">校內外資源資訊</label><label><input type="checkbox" name="adminSupport" value="校內行政資源申請協助">校內行政資源申請</label><label><input type="checkbox" name="adminSupport" value="校外資源轉介與申請協助">校外資源轉介與申請</label><label><input type="checkbox" name="adminSupport" value="其他">其他</label></div><label>其他<textarea name="adminSupportNote" rows="2"></textarea></label></fieldset>
 <fieldset class="official-fieldset"><legend>支持服務調整評估</legend><div class="checks"><label><input type="checkbox" name="supportAdjustment" value="現有支持適切，持續維持">現有支持適切，持續維持</label><label><input type="checkbox" name="supportAdjustment" value="需調整部分支持內容">需調整部分支持內容</label><label><input type="checkbox" name="supportAdjustment" value="需新增或加強支持服務">需新增或加強支持服務</label><label><input type="checkbox" name="supportAdjustment" value="需減少或結束部分支持">需減少或結束部分支持</label><label><input type="checkbox" name="supportAdjustment" value="其他">其他</label></div><label>其他<textarea name="supportAdjustmentNote" rows="2"></textarea></label></fieldset>
 
-<h3>二、身心障礙相關補助與服務（輔導員填寫）</h3>
+<h3 class="form-page-break">二、身心障礙相關補助與服務（輔導員填寫）</h3>
 <fieldset class="official-fieldset"><legend>專業及相關服務現況</legend>
   <h4>（1）經濟補助</h4><div class="checks"><label><input type="checkbox" name="relatedServices" value="低收入戶生活補助">低收入戶生活補助</label><label><input type="checkbox" name="relatedServices" value="身心障礙者生活補助">身障生活補助</label><label><input type="checkbox" name="relatedServices" value="身心障礙者津貼">身障津貼</label><label><input type="checkbox" name="relatedServices" value="健保自付保費補助">健保自付保費補助</label><label><input type="checkbox" name="relatedServices" value="急難救助">急難救助</label><label><input type="checkbox" name="relatedServices" value="學雜費減免補助">學雜費減免</label><label><input type="checkbox" name="relatedServices" value="獎助學金">獎助學金</label><label><input type="checkbox" name="relatedServices" value="生活及復健輔助器具補助">生活及復健輔具補助</label><label><input type="checkbox" name="relatedServices" value="醫療補助">醫療補助</label><label><input type="checkbox" name="relatedServices" value="租賃補助">租賃補助</label></div>
   <h4>（2）支持性服務</h4><div class="checks"><label><input type="checkbox" name="relatedServices" value="居家照顧服務">居家照顧</label><label><input type="checkbox" name="relatedServices" value="臨時照顧服務">臨時照顧</label><label><input type="checkbox" name="relatedServices" value="親職教育">親職教育</label><label><input type="checkbox" name="relatedServices" value="交通服務">交通服務</label><label><input type="checkbox" name="relatedServices" value="諮詢服務">諮詢服務</label><label><input type="checkbox" name="relatedServices" value="諮商輔導服務">諮商輔導</label><label><input type="checkbox" name="relatedServices" value="休閒活動">休閒活動</label></div>
@@ -157,4 +157,4 @@
 <label class="boxed">服務評估摘要<textarea name="serviceEvaluationSummary" rows="6"></textarea></label>
 
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存草稿</button><button type="button" id="downloadBtn" class="secondary">下載 Word 測試版</button></div>
-</form></section></main></div><script type="module" src="app.js?v=0.4.2.5"></script></body></html>
+</form></section></main></div><script type="module" src="app.js?v=0.4.2.6"></script></body></html>
