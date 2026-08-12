@@ -64,7 +64,34 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     emergencyHomePhoneText:`住家：${f.emergencyHomePhone||""}`,
     emergencyMobileText:`手機：${f.emergencyMobile||""}`,
     emergencyEmailText:`E-mail：${f.emergencyEmail||""}`,
-    emergencyAddressBlock:`（${markOne(f.emergencyAddressType,"同戶籍")}同戶籍 ${markOne(f.emergencyAddressType,"公司")}公司 ${markOne(f.emergencyAddressType,"其他")}其他） ${f.emergencyAddress||""}`
+    emergencyAddressBlock:`（${markOne(f.emergencyAddressType,"同戶籍")}同戶籍 ${markOne(f.emergencyAddressType,"公司")}公司 ${markOne(f.emergencyAddressType,"其他")}其他） ${f.emergencyAddress||""}`,
+    talentsBlock:[
+      ["唱歌","樂器","舞蹈","運動"],
+      ["美演","語言","手工藝","機械"],
+      ["網頁設計","撰寫程式","文藝創作","手語翻譯","表演"],
+    ].map(row=>row.map(x=>`${markMany(f.talents,x)}${x}`).join("　")).join("\n")+
+      `\n${markMany(f.talents,"其他")}其他${f.talentsOther?`：${f.talentsOther}`:""}`,
+    highSchoolTypeChecks:["普通班","特殊學校","資源班","特殊班","巡迴輔導"].map(x=>`${markMany(f.highSchoolType,x)}${x}`).join(""),
+    cadreBlock:`幹部名稱（何時擔任）\n1. ${f.cadreExperience1||""}\n2. ${f.cadreExperience2||""}\n3. ${f.cadreExperience3||""}`,
+    clubBlock:`社團名稱　參與項目\n1. ${f.clubName1||""}　${f.clubItem1||""}\n2. ${f.clubName2||""}　${f.clubItem2||""}\n3. ${f.clubName3||""}　${f.clubItem3||""}`,
+    workBlock:`工作職稱　從事內容\n1. ${f.workTitle1||""}　${f.workContent1||""}\n2. ${f.workTitle2||""}　${f.workContent2||""}\n3. ${f.workTitle3||""}　${f.workContent3||""}`,
+    transportLicenseBlock:`到校交通工具：${["大眾運輸","無法自行上學","自行開車","自行騎機車","步行"].map(x=>`${markMany(f.transport,x)}${x}`).join("　")}\n`+
+      `${markMany(f.transport,"其他")}其他：${f.transportOther||""}\n`+
+      `我擁有的駕照：${markMany(f.license,"汽車")}汽車（加註條件：${f.carLicenseCondition||""}）　${markMany(f.license,"機車")}機車（加註條件：${f.motorcycleLicenseCondition||""}）`,
+    assistiveUseBlock:`現階段使用的輔具：\n${markOne(f.assistiveNeed,"無需求")}無需求\n${markOne(f.assistiveNeed,"有需求")}有需求：1.生活輔具：${f.assistiveLife||""}\n2.學習輔具：${f.assistiveLearning||""}\n3.醫療輔具：${f.assistiveMedical||""}\n4.其它輔具：${f.assistiveOther||""}`,
+    assistiveStatusBlock:`輔具使用狀況：\n輔具來源：${markOne(f.assistiveSource,"自備")}自備　${markOne(f.assistiveSource,"借用")}借用：${f.assistiveBorrowFrom||""}\n`+
+      `輔具現況：${markOne(f.assistiveCondition,"良好")}良好　${markOne(f.assistiveCondition,"需定時評估調整")}需定時評估調整（頻率：${f.assistiveFrequency||""}／次）　${markOne(f.assistiveCondition,"急需調整")}急需調整\n其他：${f.assistiveStatusOther||""}`,
+    familyStatusBlock:`1.排行：${f.birthOrder||""}，兄：${f.brothersOlder||""}人、姊：${f.sistersOlder||""}人、弟：${f.brothersYounger||""}人、妹：${f.sistersYounger||""}人\n`+
+      `2.父母關係：${["同居","分居","離異","其他"].map(x=>`${markOne(f.parentsRelationship,x)}${x}`).join(" ")}${f.parentsRelationshipOther?`：${f.parentsRelationshipOther}`:""}\n`+
+      `3.個人婚姻狀況：${markOne(f.maritalStatus,"未婚")}未婚 ${markOne(f.maritalStatus,"已婚")}已婚（子女：${f.childrenCount||""}人）\n`+
+      `4.主要照顧者：${["父親","母親","祖父","祖母","其他"].map(x=>`${markOne(f.primaryCaregiver,x)}${x}`).join(" ")}${f.primaryCaregiverOther?`：${f.primaryCaregiverOther}`:""}\n`+
+      `5.家中主要使用語言：${f.familyLanguage||""}，父母是否會說（或瞭解）國語：${markOne(f.parentsMandarin,"會")}會 ${markOne(f.parentsMandarin,"不會")}不會\n`+
+      `6.家中成員是否有其他特殊個案：${markOne(f.familySpecialCase,"無")}無 ${markOne(f.familySpecialCase,"有")}有（說明：${f.familySpecialCaseNote||""}）\n`+
+      `7.其他特殊身分：${["無","原住民","新住民","低收入戶","其他"].map(x=>`${markMany(f.specialIdentity,x)}${x}`).join(" ")}　原住民族別：${f.indigenousGroup||""}　其他：${f.specialIdentityOther||""}\n`+
+      `8.家庭經濟狀況：${["富裕","小康","清寒"].map(x=>`${markOne(f.economicStatus,x)}${x}`).join(" ")}（是否為低收／中低收入戶？${markOne(f.lowIncomeStatus,"是")}是 ${markOne(f.lowIncomeStatus,"否")}否）`,
+    familyReferralBlock:`${["生活輔助","獎助學金","輔具提供","醫療諮詢","居家照護/喘息服務訊息","身障生心理諮商/輔導","特殊教育諮詢","職訓及就輔","其他"].map(x=>`${markMany(f.familyReferral,x)}${x}`).join("　")}${f.familyReferralOther?`：${f.familyReferralOther}`:""}`,
+    parentExpectationChecks:["支持就學","不支持就學","沒意見"].map(x=>`${markOne(f.parentExpectation,x)}${x}`).join("　"),
+    selfExpectationBlock:`${markOne(f.selfExpectation,"就讀科系符合興趣")}就讀科系符合興趣　${markOne(f.selfExpectation,"就讀科系不符合興趣")}就讀科系不符合興趣：${markMany(f.selfExpectationAction,"考慮轉系")}考慮轉系　${markMany(f.selfExpectationAction,"其他")}其他${f.selfExpectationNote?`：${f.selfExpectationNote}`:""}`
   };
 }
 $("downloadBtn").onclick=async()=>{
@@ -73,7 +100,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.3",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.4",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
