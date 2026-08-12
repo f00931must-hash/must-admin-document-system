@@ -22,7 +22,7 @@ function checkLines(values, options){ return options.map(x=>`${markMany(values,x
 function checkInline(values, options){ return options.map(x=>`${markMany(values,x)}${x}`).join("　"); }
 function ratingLine(label, value, options){ return `${label} ${options.map(x=>`${markOne(value,x)}${x}`).join(" ")}`; }
 function ratingOptions(value, options){return options.map(x=>`${markOne(value,x)}${x}`).join(" ");}
-function compactRatingLine(label, value, options){return `${label}${options.map(x=>`${markOne(value,x)}${x}`).join("")}`;}
+function compactRatingLine(label, value, options){return `${label} ${options.map(x=>`${markOne(value,x)}${x}`).join("")}`;}
 function serviceOption(values, option, label=option){return `${markMany(values,option)}${label}`;}
 const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2"];
 function dateParts(v){
@@ -288,7 +288,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.11",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.12",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
