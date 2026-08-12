@@ -7,7 +7,7 @@ const $=id=>document.getElementById(id);let currentUser=null;
 function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
 function formData(){const f=$("ispForm"),data={};for(const el of f.elements){if(!el.name||el.type==='submit'||el.type==='button')continue;if(el.type==='checkbox'){if(!data[el.name])data[el.name]=[];if(el.checked)data[el.name].push(el.value);}else if(el.type==='radio'){if(el.checked)data[el.name]=el.value;else if(!(el.name in data))data[el.name]='';}else data[el.name]=el.value;}return data;}
 function clearForm(){$("ispForm").reset();$("docId").value='';}
-function fillForm(data){clearForm();$("docId").value=data.id||'';for(const el of $("ispForm").elements){if(!el.name)continue;const v=data.form?.[el.name];if(el.type==='checkbox')el.checked=Array.isArray(v)&&v.includes(el.value);else if(el.type==='radio')el.checked=v===el.value;else if(v!==undefined)el.value=v??'';}}
+function fillForm(data){clearForm();$("docId").value=data.id||'';for(const el of $("ispForm").elements){if(!el.name)continue;const v=data.form?.[el.name];if(el.type==='checkbox')el.checked=Array.isArray(v)&&v.includes(el.value);else if(el.type==='radio')el.checked=v===el.value;else if(v!==undefined)el.value=el.matches('[data-roc-date]')?rocInputDate(v):v??'';}}
 $("loginBtn").onclick=()=>signInWithPopup(auth,provider);$("logoutBtn").onclick=()=>signOut(auth);$("newIspBtn").onclick=()=>{clearForm();showPage('ispEditor')};$("backBtn").onclick=()=>showPage('home');
 document.querySelectorAll('.nav[data-view]').forEach(btn=>btn.onclick=async()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));btn.classList.add('active');showPage(btn.dataset.view);if(btn.dataset.view==='mine')await loadDocs();});
 $("ispForm").onsubmit=async e=>{e.preventDefault();if(!currentUser)return;const form=formData();const payload={ownerUid:currentUser.uid,ownerEmail:currentUser.email||'',type:'ISP',studentName:(form.studentName||'').trim(),studentId:(form.studentId||'').trim(),form,updatedAt:serverTimestamp()};const id=$("docId").value;if(id)await updateDoc(doc(db,'adminDocuments',id),payload);else{payload.createdAt=serverTimestamp();const ref=await addDoc(collection(db,'adminDocuments'),payload);$("docId").value=ref.id;}alert('草稿已儲存');};
@@ -17,12 +17,24 @@ onAuthStateChanged(auth,user=>{currentUser=user;if(user){$("loginView").classLis
 
 function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
-function dateText(v){ if(!v) return ""; const p=v.split("-"); const y=Number(p[0])-1911; return `${y}年${Number(p[1])}月${Number(p[2])}日`; }
+const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2","medStart3","medNextChange3"];
+function dateParts(v){
+  const m=String(v??'').trim().match(/^(?:民國\s*)?(\d{2,4})\s*[年\/.\-]\s*(\d{1,2})\s*[月\/.\-]\s*(\d{1,2})\s*日?$/);
+  if(!m)return null;
+  let y=Number(m[1]);const month=Number(m[2]),day=Number(m[3]);
+  if(y>=1912)y-=1911;
+  if(y<1||month<1||month>12||day<1||day>31)return null;
+  return {y,month,day};
+}
+function rocInputDate(v){const p=dateParts(v);return p?`${p.y}/${String(p.month).padStart(2,'0')}/${String(p.day).padStart(2,'0')}`:String(v??'');}
+function dateText(v){const p=dateParts(v);return p?`${p.y}年${p.month}月${p.day}日`:String(v??'').trim();}
 function exportData(f){
   const sys=f.schoolSystem||"";
   const adm=f.admissionMethod||"";
+  const rocData={...f};
+  rocDateFields.forEach(name=>{rocData[name]=dateText(f[name]);});
   return {
-    ...f,
+    ...rocData,
     fillDateText: dateText(f.fillDate),
     birthdayText: dateText(f.birthday), admissionDateText: dateText(f.admissionDate),
     genderChecks:`${markOne(f.gender,"男")}男  ${markOne(f.gender,"女")}女`,
