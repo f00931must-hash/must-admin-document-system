@@ -138,7 +138,39 @@ function getIspAiText(payload){
   return String(payload?.polishedText ?? payload?.polished ?? payload?.text ?? payload?.result ?? payload?.output ?? "").trim();
 }
 
-document.querySelectorAll(".ai-polish-btn").forEach(button=>{
+const AI_NEEDS_FIELDS=[
+  "disabilityFeatures","currentDisabilityStatus","otherHealthDescription",
+  "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
+  "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
+  "strengthRelationship","strengthEmotion","strengthIllnessAwareness","strengthProblemSolving",
+  "strengthResourceSeeking","strengthSupportSystem","strengthFamilyInteraction","strengthFamilyEconomy",
+  "analysisSelfCare","analysisStudyWork","analysisMobility","analysisTransport","analysisCommunication",
+  "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
+  "familyReferral","familyReferralOther","parentExpectation","selfExpectation","selfExpectationAction","selfExpectationNote"
+];
+const AI_SERVICE_FIELDS=[
+  "studentNeedsAssessment","learningSupport","learningSupportNote","emotionalSupport","emotionalSupportNote",
+  "environmentSupport","environmentSupportNote","academicPlanningSupport","academicPlanningSupportNote",
+  "careerSupport","careerSupportNote","adminSupport","adminSupportNote","supportAdjustment","supportAdjustmentNote",
+  "relatedServices","relatedServicesNote","otherServiceSuggestions","otherServiceSuggestionsNote"
+];
+function aiFieldLabel(name){
+  const el=document.querySelector(`[name="${name}"]`);
+  if(!el)return name;
+  const label=el.closest("label");
+  const text=label?.childNodes?.[0]?.textContent?.trim();
+  return text||name;
+}
+function buildAiSource(mode){
+  const values=formData();
+  const fields=mode==="service-evaluation"?AI_SERVICE_FIELDS:AI_NEEDS_FIELDS;
+  return fields.map(name=>{
+    const value=values[name];
+    const text=Array.isArray(value)?value.filter(Boolean).join("、"):String(value||"").trim();
+    return text?`${aiFieldLabel(name)}：${text}`:"";
+  }).filter(Boolean).join("\n");
+}
+function attachUndoButton(button){
   const buttonGroup=document.createElement("div");
   buttonGroup.className="ai-button-group";
   button.parentNode.insertBefore(buttonGroup,button);
@@ -149,15 +181,19 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
   undoButton.textContent="↩ 還原";
   undoButton.disabled=true;
   buttonGroup.appendChild(undoButton);
-
   undoButton.addEventListener("click",()=>{
     const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
-    if(!textarea||typeof undoButton.dataset.original!=="string") return;
+    if(!textarea||typeof undoButton.dataset.original!=="string")return;
     textarea.value=undoButton.dataset.original;
     textarea.dispatchEvent(new Event("input",{bubbles:true}));
     delete undoButton.dataset.original;
     undoButton.disabled=true;
   });
+  return undoButton;
+}
+
+document.querySelectorAll(".ai-polish-btn").forEach(button=>{
+  const undoButton=attachUndoButton(button);
 
   button.addEventListener("click",async()=>{
     const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
@@ -187,13 +223,37 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
   });
 });
 
+document.querySelectorAll(".ai-generate-btn").forEach(button=>{
+  const undoButton=attachUndoButton(button);
+  button.addEventListener("click",async()=>{
+    const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
+    const source=buildAiSource(button.dataset.aiMode);
+    if(!source){alert("目前沒有足夠的已填資料可供 AI 產生，請先填寫前面的相關欄位。");return;}
+    const original=textarea?.value||"";
+    const oldLabel=button.textContent;
+    button.disabled=true;button.textContent="AI 產生中…";
+    try{
+      const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:source,mode:button.dataset.aiMode,documentType:"ISP"})});
+      let payload={};try{payload=await response.json();}catch{}
+      if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+      const generated=getIspAiText(payload);
+      if(!generated)throw new Error("AI 沒有回傳可用內容");
+      undoButton.dataset.original=original;
+      textarea.value=generated;
+      textarea.dispatchEvent(new Event("input",{bubbles:true}));
+      undoButton.disabled=false;
+    }catch(error){console.error(error);alert(error?.message||"AI 產生失敗，請稍後再試。");}
+    finally{button.disabled=false;button.textContent=oldLabel;}
+  });
+});
+
 $("downloadBtn").onclick=async()=>{
   try{
     if (typeof window.PizZip === "undefined") throw new Error("Word 元件 PizZip 載入失敗，請重新整理頁面後再試");
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.7",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.8",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
