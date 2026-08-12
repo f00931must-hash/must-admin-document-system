@@ -139,6 +139,26 @@ function getIspAiText(payload){
 }
 
 document.querySelectorAll(".ai-polish-btn").forEach(button=>{
+  const buttonGroup=document.createElement("div");
+  buttonGroup.className="ai-button-group";
+  button.parentNode.insertBefore(buttonGroup,button);
+  buttonGroup.appendChild(button);
+  const undoButton=document.createElement("button");
+  undoButton.type="button";
+  undoButton.className="ai-undo-btn";
+  undoButton.textContent="↩ 還原";
+  undoButton.disabled=true;
+  buttonGroup.appendChild(undoButton);
+
+  undoButton.addEventListener("click",()=>{
+    const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
+    if(!textarea||typeof undoButton.dataset.original!=="string") return;
+    textarea.value=undoButton.dataset.original;
+    textarea.dispatchEvent(new Event("input",{bubbles:true}));
+    delete undoButton.dataset.original;
+    undoButton.disabled=true;
+  });
+
   button.addEventListener("click",async()=>{
     const textarea=document.querySelector(`[name="${button.dataset.aiTarget}"]`);
     const original=textarea?.value.trim()||"";
@@ -156,10 +176,10 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
       if(!response.ok) throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
       const polished=getIspAiText(payload);
       if(!polished) throw new Error("AI 沒有回傳可用內容");
-      if(window.confirm(`AI 潤飾結果：\n\n${polished}\n\n按「確定」套用到此欄；按「取消」保留原文。`)){
-        textarea.value=polished;
-        textarea.dispatchEvent(new Event("input",{bubbles:true}));
-      }
+      undoButton.dataset.original=original;
+      textarea.value=polished;
+      textarea.dispatchEvent(new Event("input",{bubbles:true}));
+      undoButton.disabled=false;
     }catch(error){
       console.error(error);
       alert(error?.message||"AI 潤飾失敗，請稍後再試。");
@@ -173,7 +193,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.6",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.7",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);

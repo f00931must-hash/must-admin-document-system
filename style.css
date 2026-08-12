@@ -10,5 +10,8 @@
 .official-form>h2,.official-form>h3{box-sizing:border-box}
 .ai-polish-btn{align-self:flex-start;border:1px solid #9dd8f2;border-radius:9px;background:#eef9ff;color:#0878b9;padding:8px 12px;font-weight:700;cursor:pointer}
 .ai-polish-btn:hover{background:#dff4ff}.ai-polish-btn:disabled{cursor:wait;opacity:.65}
+.ai-button-group{display:flex;align-items:center;gap:8px}
+.ai-undo-btn{border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#475569;padding:8px 12px;font-weight:700;cursor:pointer}
+.ai-undo-btn:hover:not(:disabled){background:#f1f5f9}.ai-undo-btn:disabled{cursor:not-allowed;opacity:.45}
 .ability-summary-grid>label{margin-bottom:4px}
 .form-page-break{border-top:2px dashed #b8c5d6;padding-top:16px}
