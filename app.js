@@ -20,7 +20,8 @@ function markOne(value, option){ return value===option ? "■" : "□"; }
 function markMany(values, option){ return Array.isArray(values) && values.includes(option) ? "■" : "□"; }
 function checkLines(values, options){ return options.map(x=>`${markMany(values,x)} ${x}`).join("\n"); }
 function checkInline(values, options){ return options.map(x=>`${markMany(values,x)}${x}`).join("　"); }
-function ratingLine(label, value, options){ return `${label} ${options.map(x=>`${markOne(value,x)} ${x}`).join("  ")}`; }
+function ratingLine(label, value, options){ return `${label} ${options.map(x=>`${markOne(value,x)}${x}`).join(" ")}`; }
+function serviceOption(values, option, label=option){return `${markMany(values,option)}${label}`;}
 const rocDateFields=["fillDate","birthday","admissionDate","leaveDate","assessmentDate","reassessmentDate","medStart1","medNextChange1","medStart2","medNextChange2"];
 function dateParts(v){
   const m=String(v??'').trim().match(/^(?:民國\s*)?(\d{2,4})\s*[年\/.\-]\s*(\d{1,2})\s*[月\/.\-]\s*(\d{1,2})\s*日?$/);
@@ -126,13 +127,35 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     careerSupportBlock:`${checkLines(f.careerSupport,["生涯探索／討論","職涯諮詢／評估","畢業準備與轉銜規劃討論","履歷／自傳協助（修改與建議）","就業準備支持（基本面試準備／資訊提供）","個別轉銜會議","轉銜資源連結（就業中心等）"])}\n說明：${f.careerSupportNote||""}`,
     adminSupportBlock:`${checkLines(f.adminSupport,["特教生獎助學金申請協助","校內外資源資訊提供：校內－高教深耕計畫","校內行政資源申請協助","校外資源轉介與申請協助","其他"])}\n其他：${f.adminSupportNote||""}`,
     supportAdjustmentBlock:`${checkLines(f.supportAdjustment,["現有支持適切，持續維持","需調整部分支持內容","需新增或加強支持服務","需減少或結束部分支持","其他"])}\n其他：${f.supportAdjustmentNote||""}`,
-    relatedServicesBlock:`（1）經濟補助\n${checkInline(f.relatedServices,["低收入戶生活補助","身心障礙者生活補助","身心障礙者津貼","健保自付保費補助","急難救助","學雜費減免補助","獎助學金","生活及復健輔助器具補助","醫療補助","租賃補助"])}\n`+
-      `（2）支持性服務\n${checkInline(f.relatedServices,["居家照顧服務","臨時照顧服務","親職教育","交通服務","諮詢服務","諮商輔導服務","休閒活動"])}\n`+
-      `（3）復健與醫療服務\n${checkInline(f.relatedServices,["物理治療","職能治療","語言治療","個別心理治療","團體治療","聽力復健","精神科醫療","視力復健","營養諮詢","居家護理","居家復健","輔助器具","精神復健機構","障礙重新鑑定","重大疾病性醫療"])}\n`+
-      `（4）就學服務\n${checkInline(f.relatedServices,["教育輔具","行為輔導","課業輔導","生活輔導","職業輔導","就業輔導","工讀","校外實習"])}\n`+
-      `（5）住宿\n${checkInline(f.relatedServices,["保留床位","特殊寢室","室友安排"])}\n（6）交通\n${checkInline(f.relatedServices,["無法自行上學（政府補助800元／月）","專用停車位識別證／專用牌照"])}\n`+
-      `（7）活動參與\n${checkInline(f.relatedServices,["期初會議","迎新、送舊","校外參訪","講座","競賽活動","轉銜會議"])}\n（8）其他\n${markMany(f.relatedServices,"其他")} 其他：${f.relatedServicesNote||""}`,
-    otherServiceSuggestionsBlock:`${checkInline(f.otherServiceSuggestions,["經濟補助","居家照顧服務","臨時照顧服務","發展評估","物理治療","居家護理","職能治療","語言治療","聽力復健","視力復健","心理復健","居家復健","輔助器具","障礙再鑑定","職業輔導評量","職業訓練","就業服務","安置服務","家庭輔導","法律協助","個案管理","其他"])}\n補充：${f.otherServiceSuggestionsNote||""}`
+    relatedServicesBlock:`（1）經濟補助\n`+
+      `${serviceOption(f.relatedServices,"低收入戶生活補助")} ${serviceOption(f.relatedServices,"身心障礙者生活補助")} ${serviceOption(f.relatedServices,"身心障礙者津貼")}\n`+
+      `${serviceOption(f.relatedServices,"健保自付保費補助")} ${serviceOption(f.relatedServices,"急難救助")} ${serviceOption(f.relatedServices,"學雜費減免補助")}\n`+
+      `${serviceOption(f.relatedServices,"獎助學金")} ${serviceOption(f.relatedServices,"生活及復健輔助器具補助")} ${serviceOption(f.relatedServices,"醫療補助")}\n`+
+      `${serviceOption(f.relatedServices,"租賃補助")} ${serviceOption(f.relatedServices,"經濟補助其他","其他")}：________________（請註明）\n`+
+      `（2）支持性服務\n`+
+      `${serviceOption(f.relatedServices,"居家照顧服務")} ${serviceOption(f.relatedServices,"臨時照顧服務")} ${serviceOption(f.relatedServices,"親職教育")} ${serviceOption(f.relatedServices,"交通服務")}\n`+
+      `${serviceOption(f.relatedServices,"諮詢服務")} ${serviceOption(f.relatedServices,"諮商輔導服務")} ${serviceOption(f.relatedServices,"休閒活動")} ${serviceOption(f.relatedServices,"支持性服務其他","其他")}：________\n`+
+      `（3）復健與醫療服務\n`+
+      `${serviceOption(f.relatedServices,"物理治療")} ${serviceOption(f.relatedServices,"職能治療")} ${serviceOption(f.relatedServices,"語言治療")} ${serviceOption(f.relatedServices,"個別心理治療")}\n`+
+      `${serviceOption(f.relatedServices,"團體治療")} ${serviceOption(f.relatedServices,"聽力復健")} ${serviceOption(f.relatedServices,"精神科醫療")} ${serviceOption(f.relatedServices,"視力復健")} ${serviceOption(f.relatedServices,"營養諮詢")}\n`+
+      `${serviceOption(f.relatedServices,"居家護理")} ${serviceOption(f.relatedServices,"居家復健")} ${serviceOption(f.relatedServices,"輔助器具")} ${serviceOption(f.relatedServices,"精神復健機構")}\n`+
+      `${serviceOption(f.relatedServices,"障礙重新鑑定")} ${serviceOption(f.relatedServices,"重大疾病性醫療")}：________（請註明）\n`+
+      `${serviceOption(f.relatedServices,"復健醫療其他","其他")}：________________________（請註明）\n`+
+      `（4）就學服務\n`+
+      `${serviceOption(f.relatedServices,"教育輔具")} ${serviceOption(f.relatedServices,"行為輔導")} ${serviceOption(f.relatedServices,"課業輔導")} ${serviceOption(f.relatedServices,"生活輔導")} ${serviceOption(f.relatedServices,"職業輔導")}\n`+
+      `${serviceOption(f.relatedServices,"就業輔導")} ${serviceOption(f.relatedServices,"入學管道","入學管道")}：請註明\n`+
+      `${serviceOption(f.relatedServices,"工讀")} ${serviceOption(f.relatedServices,"校外實習","校外實習業")}：請註明職種及時間\n`+
+      `${serviceOption(f.relatedServices,"就學服務其他","其他")}：________________________（請註明）\n`+
+      `（5）住宿\n${serviceOption(f.relatedServices,"保留床位")} ${serviceOption(f.relatedServices,"特殊寢室")} ${serviceOption(f.relatedServices,"室友安排")} ${serviceOption(f.relatedServices,"住宿其他","其他")}：________\n`+
+      `（6）交通：\n${serviceOption(f.relatedServices,"無法自行上學（政府補助800元／月）")}\n${serviceOption(f.relatedServices,"專用停車位識別證／專用牌照")}\n`+
+      `（7）活動參與：${serviceOption(f.relatedServices,"期初會議")} ${serviceOption(f.relatedServices,"迎新、送舊")} ${serviceOption(f.relatedServices,"校外參訪")}\n`+
+      `　　　　　　 ${serviceOption(f.relatedServices,"講座")} ${serviceOption(f.relatedServices,"競賽活動")} ${serviceOption(f.relatedServices,"轉銜會議")}\n`+
+      `（8）其他：${f.relatedServicesNote||""}　　　　　　　　　（請註明）`,
+    otherServiceSuggestionsBlock:`經濟補助 ${serviceOption(f.otherServiceSuggestions,"居家照顧服務")} ${serviceOption(f.otherServiceSuggestions,"臨時照顧服務")} ${serviceOption(f.otherServiceSuggestions,"發展評估")}\n`+
+      `${serviceOption(f.otherServiceSuggestions,"物理治療")} ${serviceOption(f.otherServiceSuggestions,"居家護理")} ${serviceOption(f.otherServiceSuggestions,"職能治療")} ${serviceOption(f.otherServiceSuggestions,"語言治療")} ${serviceOption(f.otherServiceSuggestions,"聽力復健")}\n`+
+      `${serviceOption(f.otherServiceSuggestions,"視力復健")} ${serviceOption(f.otherServiceSuggestions,"心理復健")} ${serviceOption(f.otherServiceSuggestions,"居家復健")} ${serviceOption(f.otherServiceSuggestions,"輔助器具")} ${serviceOption(f.otherServiceSuggestions,"障礙再鑑定")}\n`+
+      `${serviceOption(f.otherServiceSuggestions,"職業輔導評量")} ${serviceOption(f.otherServiceSuggestions,"職業訓練")} ${serviceOption(f.otherServiceSuggestions,"就業服務")}${serviceOption(f.otherServiceSuggestions,"安置服務")} ${serviceOption(f.otherServiceSuggestions,"家庭輔導")}\n`+
+      `${serviceOption(f.otherServiceSuggestions,"法律協助")} ${serviceOption(f.otherServiceSuggestions,"個案管理")} ${serviceOption(f.otherServiceSuggestions,"其他")}：${f.otherServiceSuggestionsNote||""}（請註明）`
   };
 }
 
@@ -255,7 +278,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.9",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=0.4.2.10",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
