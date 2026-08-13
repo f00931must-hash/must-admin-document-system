@@ -1,12 +1,10 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MUST 行政文書製作系統</title><link rel="stylesheet" href="style.css"><script src="https://unpkg.com/pizzip@3.2.0/dist/pizzip.js"></script><script src="https://unpkg.com/docxtemplater@3.69.3/build/docxtemplater.js"></script><script src="https://unpkg.com/file-saver@1.3.8/FileSaver.js"></script></head><body>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>新生ISP總表</title><link rel="stylesheet" href="style.css"><script src="https://unpkg.com/pizzip@3.2.0/dist/pizzip.js"></script><script src="https://unpkg.com/docxtemplater@3.69.3/build/docxtemplater.js"></script><script src="https://unpkg.com/file-saver@1.3.8/FileSaver.js"></script></head><body>
 <div id="loginView" class="center-card"><h1>行政表單製作入口</h1><p>明新科技大學 資源教室</p><button id="loginBtn" class="primary">使用 Google 登入</button></div>
 <div id="appView" class="app hidden"><aside class="sidebar"><h2>行政文書</h2><button class="nav active" data-view="home">📄 表單製作入口</button><button class="nav" data-view="mine">🗂️ 我的行政文書</button><div class="spacer"></div><div id="userEmail" class="user-email"></div><button id="logoutBtn" class="nav danger">登出</button></aside><main class="main">
-<section id="home" class="page"><div class="page-head"><div><h1>行政表單製作入口</h1><p>選擇要製作的行政文書。</p></div></div><div class="form-grid"><article class="form-card"><span class="badge">新生優先</span><h3>特殊教育學生個別化支持計畫 ISP</h3><p>已依官方表格第 1～5 頁校正欄位型態與主要表格結構。</p><button id="newIspBtn" class="primary">建立 ISP</button></article><article class="form-card muted"><span class="badge">未來擴充</span><h3>其他行政文書</h3><p>後續可加入 ITP、會議紀錄、需求調查表等。</p></article></div></section>
+<section id="home" class="page"><div class="page-head"><div><h1>行政表單製作入口</h1><p>選擇要製作的行政文書。</p></div></div><div class="form-grid"><article class="form-card"><span class="badge">新生優先</span><h3>新生ISP總表</h3><button id="newIspBtn" class="primary">建立 ISP</button></article><article class="form-card muted"><span class="badge">未來擴充</span><h3>其他行政文書</h3><p>後續可加入 ITP、會議紀錄、需求調查表等。</p></article></div></section>
 <section id="mine" class="page hidden"><div class="page-head"><div><h1>我的行政文書</h1><p>只顯示目前登入老師自己的文件。</p></div></div><div id="docList" class="doc-list"></div></section>
-<section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>特殊教育學生個別化支持計畫 ISP</h1><p>v0.4.2.6｜版面校正與 ISP AI 測試版</p></div><button id="backBtn" class="secondary">返回</button></div>
+<section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>新生ISP總表</h1><p>v1.0｜正式版</p></div><button id="backBtn" class="secondary">返回</button></div>
 <form id="ispForm" class="editor-card official-form"><input type="hidden" id="docId">
-<div class="notice">本頁依學校最新版 ISP 第 1～5 頁欄位與選項型態校正。原 Word 為勾選的項目，網頁也以勾選／單選呈現；系統管理資訊不會寫入正式 ISP。</div>
-
 <h2>壹、基本資料與能力描述</h2>
 <h3>一、學生基本資料</h3>
 <div class="official-section">
@@ -157,4 +155,4 @@
 <label class="boxed">服務評估摘要<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="ai-generate-btn" data-ai-target="serviceEvaluationSummary" data-ai-mode="service-evaluation">✨ AI 自動產生</button></label>
 
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存草稿</button><button type="button" id="downloadBtn" class="secondary">下載 Word 測試版</button></div>
-</form></section></main></div><script type="module" src="app.js?v=0.4.2.13"></script></body></html>
+</form></section></main></div><script type="module" src="app.js?v=1.0"></script></body></html>
