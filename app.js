@@ -169,7 +169,7 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
       `（5）住宿\n${serviceOption(f.relatedServices,"保留床位")} ${serviceOption(f.relatedServices,"特殊寢室")} ${serviceOption(f.relatedServices,"室友安排")} ${serviceOption(f.relatedServices,"住宿其他","其他")}：________\n`+
       `（6）交通：\n${serviceOption(f.relatedServices,"無法自行上學（政府補助800元／月）")}\n${serviceOption(f.relatedServices,"專用停車位識別證／專用牌照")}\n`+
       `（7）活動參與：${serviceOption(f.relatedServices,"期初會議")} ${serviceOption(f.relatedServices,"迎新、送舊")} ${serviceOption(f.relatedServices,"校外參訪")}\n`+
-      `　　　　　　 ${serviceOption(f.relatedServices,"講座")} ${serviceOption(f.relatedServices,"競賽活動")} ${serviceOption(f.relatedServices,"轉銜會議")}\n`+
+      `　　　　　　　 ${serviceOption(f.relatedServices,"講座")} ${serviceOption(f.relatedServices,"競賽活動")} ${serviceOption(f.relatedServices,"轉銜會議")}\n`+
       `（8）其他：${f.relatedServicesNote||""}　　　　　　　　　（請註明）`,
     otherServiceSuggestionsBlock:`經濟補助 ${serviceOption(f.otherServiceSuggestions,"居家照顧服務")} ${serviceOption(f.otherServiceSuggestions,"臨時照顧服務")} ${serviceOption(f.otherServiceSuggestions,"發展評估")}\n`+
       `${serviceOption(f.otherServiceSuggestions,"物理治療")} ${serviceOption(f.otherServiceSuggestions,"居家護理")} ${serviceOption(f.otherServiceSuggestions,"職能治療")} ${serviceOption(f.otherServiceSuggestions,"語言治療")} ${serviceOption(f.otherServiceSuggestions,"聽力復健")}\n`+
@@ -298,7 +298,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.9",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.10",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
