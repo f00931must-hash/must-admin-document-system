@@ -7,6 +7,10 @@ service cloud.firestore {
     function access() { return get(/databases/$(database)/documents/settings/adminAccess).data; }
     function activeUser() { return signedIn() && accessExists() && access().users[email()].enabled == true; }
     function admin() { return activeUser() && access().users[email()].role == 'admin'; }
+    function role() { return access().users[email()].role; }
+    function workspaceOwnerEmail() {
+      return role() == 'assistant' ? access().users[email()].ownerEmail : email();
+    }
 
     match /settings/adminAccess {
       allow read: if activeUser();
@@ -15,8 +19,17 @@ service cloud.firestore {
     }
 
     match /adminDocuments/{docId} {
-      allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
-      allow read, update, delete: if activeUser() && resource.data.ownerUid == request.auth.uid;
+      allow create: if activeUser()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerEmail == workspaceOwnerEmail();
+      allow read: if activeUser() && resource.data.ownerEmail == workspaceOwnerEmail();
+      allow update: if activeUser()
+        && resource.data.ownerEmail == workspaceOwnerEmail()
+        && request.resource.data.ownerEmail == resource.data.ownerEmail
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if activeUser()
+        && role() != 'assistant'
+        && resource.data.ownerEmail == email();
     }
 
     match /{document=**} { allow read, write: if false; }
