@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, updateDoc, doc, query, where, getDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 const $=id=>document.getElementById(id);let currentUser=null,currentAccess=null;
@@ -10,11 +10,17 @@ function workspaceOwnerEmail(){return currentAccess?.role==='assistant'?normaliz
 function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
 function formData(){const f=$("ispForm"),data={};for(const el of f.elements){if(!el.name||el.type==='submit'||el.type==='button')continue;if(el.type==='checkbox'){if(!data[el.name])data[el.name]=[];if(el.checked)data[el.name].push(el.value);}else if(el.type==='radio'){if(el.checked)data[el.name]=el.value;else if(!(el.name in data))data[el.name]='';}else data[el.name]=el.value;}return data;}
 function clearForm(){$("ispForm").reset();$("docId").value='';}
-function fillForm(data){clearForm();$("docId").value=data.id||'';for(const el of $("ispForm").elements){if(!el.name)continue;const v=data.form?.[el.name];if(el.type==='checkbox')el.checked=Array.isArray(v)&&v.includes(el.value);else if(el.type==='radio')el.checked=v===el.value;else if(v!==undefined)el.value=el.matches('[data-roc-date]')?rocInputDate(v):v??'';}}
+function fillForm(data){clearForm();$("docId").value=data.id||'';for(const el of $("ispForm").elements){if(!el.name)continue;const v=data.form?.[el.name];if(el.type==='checkbox')el.checked=Array.isArray(v)?v.includes(el.value):v===el.value;else if(el.type==='radio')el.checked=v===el.value;else if(v!==undefined)el.value=el.matches('[data-roc-date]')?rocInputDate(v):v??'';}}
 $("loginBtn").onclick=()=>signInWithPopup(auth,provider);$("logoutBtn").onclick=()=>signOut(auth);$("newIspBtn").onclick=()=>{clearForm();showPage('ispEditor')};$("backBtn").onclick=()=>showPage('home');
 document.querySelectorAll('.nav[data-view]').forEach(btn=>btn.onclick=async()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));btn.classList.add('active');showPage(btn.dataset.view);if(btn.dataset.view==='mine')await loadDocs();});
 $("ispForm").onsubmit=async e=>{e.preventDefault();if(!currentUser||!currentAccess)return;const form=formData(),ownerEmail=workspaceOwnerEmail();const common={ownerEmail,type:'ISP',studentName:(form.studentName||'').trim(),studentId:(form.studentId||'').trim(),form,updatedAt:serverTimestamp(),lastEditorUid:currentUser.uid,lastEditorEmail:normalizedEmail(currentUser.email)};const id=$("docId").value;if(id)await updateDoc(doc(db,'adminDocuments',id),common);else{const payload={...common,ownerUid:currentUser.uid,createdByUid:currentUser.uid,createdByEmail:normalizedEmail(currentUser.email),createdAt:serverTimestamp()};const ref=await addDoc(collection(db,'adminDocuments'),payload);$("docId").value=ref.id;}alert('草稿已儲存');};
-async function loadDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,'adminDocuments'),where('ownerEmail','==',workspaceOwnerEmail()));const snap=await getDocs(q),items=[];snap.forEach(s=>items.push({id:s.id,...s.data()}));items.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));const list=$("docList");list.innerHTML='';if(!items.length){list.innerHTML='<div class="doc-item">目前尚無行政文書。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　第一階段資料</div></div><button class="secondary">開啟</button>`;div.querySelector('button').onclick=()=>{fillForm(d);showPage('ispEditor')};list.appendChild(div);}}
+let ispDocuments=[];
+function admissionYear(value){const parsed=dateParts(value);return parsed?.y||0;}
+function createdSeconds(item){return item.createdAt?.seconds||0;}
+function sortedIspDocuments(){const mode=$("ispSort")?.value||"admission-desc";return [...ispDocuments].sort((a,b)=>{if(mode.startsWith("admission")){const yearA=admissionYear(a.form?.admissionDate),yearB=admissionYear(b.form?.admissionDate);if(!yearA||!yearB){if(yearA!==yearB)return yearA? -1:1;}else if(yearA!==yearB)return mode==="admission-asc"?yearA-yearB:yearB-yearA;return mode==="admission-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);}return mode==="created-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);});}
+function renderDocs(){const list=$("docList");list.innerHTML='';const items=sortedIspDocuments();if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';const year=admissionYear(d.form?.admissionDate);div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`入學年 ${year}`:'尚未填入學年'}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};const deleteButton=div.querySelector('.delete-doc');if(deleteButton)deleteButton.onclick=async()=>{const name=d.studentName||'未命名';if(!confirm(`確定要永久刪除「${name}」的新生 ISP 總表嗎？\n\n刪除後無法復原。`))return;if(!confirm(`請再次確認：真的要永久刪除「${name}」嗎？`))return;deleteButton.disabled=true;try{await deleteDoc(doc(db,'adminDocuments',d.id));ispDocuments=ispDocuments.filter(item=>item.id!==d.id);renderDocs();alert('已永久刪除，系統不會保留垃圾桶或封存副本。');}catch(error){console.error(error);deleteButton.disabled=false;alert('刪除失敗，請確認帳號權限或稍後再試。');}};list.appendChild(div);}}
+async function loadDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,'adminDocuments'),where('ownerEmail','==',workspaceOwnerEmail()));const snap=await getDocs(q);ispDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(!item.type||item.type==='ISP')ispDocuments.push(item);});renderDocs();}
+$("ispSort").onchange=renderDocs;
 onAuthStateChanged(auth,async user=>{currentUser=user;currentAccess=null;$("appView").classList.add('hidden');$("loginView").classList.add('hidden');$("deniedView").classList.add('hidden');if(!user){$("loginView").classList.remove('hidden');return}try{const email=String(user.email||'').trim().toLowerCase();const snap=await getDoc(doc(db,'settings','adminAccess'));const access=snap.data()?.users?.[email];if(!access||access.enabled===false)throw new Error('not-authorized');currentAccess=access;$("appView").classList.remove('hidden');$("userEmail").textContent=`${access.displayName||email}\n${email}`;}catch(err){console.error(err);$("deniedMessage").textContent='此帳號尚未由資源教室行政平台開通行政文書權限，或權限尚未同步。';$("deniedView").classList.remove('hidden');}});
 $("deniedLogoutBtn").onclick=()=>signOut(auth);
 
@@ -96,19 +102,19 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     familyStatusBlock:`1.排行：${f.birthOrder||""}，兄：${f.brothersOlder||""}人、姊：${f.sistersOlder||""}人、弟：${f.brothersYounger||""}人、妹：${f.sistersYounger||""}人\n`+
       `2.父母關係：${["同居","分居","離異","其他"].map(x=>`${markOne(f.parentsRelationship,x)}${x}`).join(" ")}${f.parentsRelationshipOther?`：${f.parentsRelationshipOther}`:""}\n`+
       `3.個人婚姻狀況：${markOne(f.maritalStatus,"未婚")}未婚 ${markOne(f.maritalStatus,"已婚")}已婚（子女：${f.childrenCount||""}人）\n`+
-      `4.主要照顧者：${["父親","母親","祖父","祖母","其他"].map(x=>`${markOne(f.primaryCaregiver,x)}${x}`).join(" ")}${f.primaryCaregiverOther?`：${f.primaryCaregiverOther}`:""}\n`+
+      `4.主要照顧者：${["父親","母親","祖父","祖母","其他"].map(x=>`${markMany(f.primaryCaregiver,x)}${x}`).join(" ")}${f.primaryCaregiverOther?`：${f.primaryCaregiverOther}`:""}\n`+
       `5.家中主要使用語言：${f.familyLanguage||""}，父母是否會說（或瞭解）國語：${markOne(f.parentsMandarin,"會")}會 ${markOne(f.parentsMandarin,"不會")}不會\n`+
       `6.家中成員是否有其他特殊個案：${markOne(f.familySpecialCase,"無")}無 ${markOne(f.familySpecialCase,"有")}有（說明：${f.familySpecialCaseNote||""}）\n`+
       `7.其他特殊身分：${["無","原住民","新住民","低收入戶","其他"].map(x=>`${markMany(f.specialIdentity,x)}${x}`).join(" ")}　原住民族別：${f.indigenousGroup||""}　其他：${f.specialIdentityOther||""}\n`+
       `8.家庭經濟狀況：${["富裕","小康","清寒"].map(x=>`${markOne(f.economicStatus,x)}${x}`).join(" ")}（是否為低收／中低收入戶？${markOne(f.lowIncomeStatus,"是")}是 ${markOne(f.lowIncomeStatus,"否")}否）`,
     familyReferralBlock:`${["生活輔助","獎助學金","輔具提供","醫療諮詢","居家照護/喘息服務訊息","身障生心理諮商/輔導","特殊教育諮詢","職訓及就輔","其他"].map(x=>`${markMany(f.familyReferral,x)}${x}`).join("　")}${f.familyReferralOther?`：${f.familyReferralOther}`:""}`,
     parentExpectationChecks:["支持就學","不支持就學","沒意見"].map(x=>`${markOne(f.parentExpectation,x)}${x}`).join("　"),
-    selfExpectationBlock:`${markOne(f.selfExpectation,"就讀科系符合興趣")}就讀科系符合興趣　${markOne(f.selfExpectation,"就讀科系不符合興趣")}就讀科系不符合興趣：${markMany(f.selfExpectationAction,"考慮轉系")}考慮轉系　${markMany(f.selfExpectationAction,"其他")}其他${f.selfExpectationNote?`：${f.selfExpectationNote}`:""}`
+    selfExpectationBlock:`${markOne(f.selfExpectation,"就讀科系符合興趣")}就讀科系符合興趣　${markOne(f.selfExpectation,"就讀科系不符合興趣")}就讀科系不符合興趣：${markMany(f.selfExpectationAction,"考慮轉系")}考慮轉系${Array.isArray(f.selfExpectationAction)&&f.selfExpectationAction.includes("考慮轉系")&&f.selfExpectationTransferDepartment?`：${f.selfExpectationTransferDepartment}`:""}　${markMany(f.selfExpectationAction,"其他")}其他${f.selfExpectationNote?`：${f.selfExpectationNote}`:""}`
     ,physicalSymptomsPresenceChecks:`${markOne(f.physicalSymptomsPresence,"無")}無　${markOne(f.physicalSymptomsPresence,"有")}有（請勾選或填寫下列選項）`,
     physicalSymptomsLine1:["癲癇","心臟病","腦性麻痺","妥瑞症","氣喘病","高血壓"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
     physicalSymptomsLine2:["低血壓","糖尿病","便溺失禁","蠶豆症","骨骼易脆","腦膜炎"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
     physicalSymptomsLine3:["脊柱側彎","精神疾病","甲狀腺機能低下","甲狀腺機能亢進"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
-    physicalSymptomsLine4:["惡性腫瘤","地中海貧血","暈眩","長期失眠"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
+    physicalSymptomsLine4:`${markMany(f.physicalSymptoms,"惡性腫瘤")}惡性腫瘤${Array.isArray(f.physicalSymptoms)&&f.physicalSymptoms.includes("惡性腫瘤")&&f.malignantTumorName?`，${f.malignantTumorName}`:""}　${["地中海貧血","暈眩","長期失眠"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　")}`,
     physicalSymptomsLine5:`${markMany(f.physicalSymptoms,"過敏")}過敏，過敏原：${f.allergen||""}　${markMany(f.physicalSymptoms,"其他")}其他：${f.symptomsOther||""}`,
     medicationUseChecks:`${markOne(f.medicationUse,"無")}無　${markOne(f.medicationUse,"有")}有（請填寫下表）`,
     otherHealthBlock:`${markOne(f.otherHealthPresence,"無")}無　${markOne(f.otherHealthPresence,"有")}有，請說明：${f.otherHealthDescription||""}`,
@@ -291,7 +297,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.4",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
@@ -299,6 +305,6 @@ $("downloadBtn").onclick=async()=>{
     docx.render(exportData(f));
     const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(f.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
-    saveAs(blob,`${safe}_ISP_輸出測試.docx`);
+    saveAs(blob,`${safe}_新生ISP總表.docx`);
   }catch(err){ console.error(err); alert(`Word 產生失敗：${err?.message||err}`); }
 };
