@@ -55,6 +55,7 @@ function exportData(f){
     ...rocData,
     fillDateText: dateText(f.fillDate),
     birthdayText: compactDateText(f.birthday), admissionDateText: compactDateText(f.admissionDate),
+    leaveDateText: compactDateText(f.leaveDate),
     genderChecks:`${markOne(f.gender,"男")}男${markOne(f.gender,"女")}女`,
     schoolSystemChecks:`${markOne(sys,"大學部")}大學部  ${markOne(sys,"研究所碩士班")}研究所碩士班  ${markOne(sys,"進修部")}進修部  ${markOne(sys,"其他")}其他${sys==="其他"&&f.schoolSystemOther?`：${f.schoolSystemOther}`:""}`,
     admissionMethodChecks:`${markOne(adm,"一般入學考試")}一般入學考試  ${markOne(adm,"身心障礙甄試")}身心障礙甄試\n${markOne(adm,"推薦甄選")}推薦甄選  ${markOne(adm,"轉學考")}轉學考  ${markOne(adm,"其他")}其他${adm==="其他"&&f.admissionMethodOther?`：${f.admissionMethodOther}`:""}`,
@@ -297,7 +298,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.4",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.5",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
