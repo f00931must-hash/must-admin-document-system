@@ -298,7 +298,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.8",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.9",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
