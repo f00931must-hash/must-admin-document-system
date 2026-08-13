@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+
+    // 只供第一次由總入口建立 adminAccess。建立完成後應立即改用 firestore.rules。
+    match /settings/adminAccess {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/settings/adminAccess)
+        && request.resource.data.users[request.auth.token.email.lower()].role == 'admin';
+      allow update, delete: if false;
+    }
+
+    // 初始化期間仍維持原 v1.0 的文件隔離規則，不影響既有草稿。
+    match /adminDocuments/{docId} {
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read, update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

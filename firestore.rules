@@ -1,9 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /adminDocuments/{docId} {
-      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
-      allow read, update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function email() { return request.auth.token.email.lower(); }
+    function accessExists() { return exists(/databases/$(database)/documents/settings/adminAccess); }
+    function access() { return get(/databases/$(database)/documents/settings/adminAccess).data; }
+    function activeUser() { return signedIn() && accessExists() && access().users[email()].enabled == true; }
+    function admin() { return activeUser() && access().users[email()].role == 'admin'; }
+
+    match /settings/adminAccess {
+      allow read: if activeUser();
+      allow create, update: if admin();
+      allow delete: if false;
     }
+
+    match /adminDocuments/{docId} {
+      allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
+      allow read, update, delete: if activeUser() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /{document=**} { allow read, write: if false; }
   }
 }
