@@ -5,35 +5,17 @@ service cloud.firestore {
     function email() { return request.auth.token.email.lower(); }
     function accessExists() { return exists(/databases/$(database)/documents/settings/adminAccess); }
     function access() { return get(/databases/$(database)/documents/settings/adminAccess).data; }
-    function assistantExists() { return signedIn() && exists(/databases/$(database)/documents/administrativeAssistants/$(email())); }
-    function assistant() { return get(/databases/$(database)/documents/administrativeAssistants/$(email())).data; }
-    function baseActive() { return signedIn() && accessExists() && email() in access().users && access().users[email()].enabled == true; }
-    function assistantActive() { return assistantExists() && assistant().enabled == true; }
-    function activeUser() { return baseActive() || assistantActive(); }
-    function admin() { return baseActive() && access().users[email()].role == 'admin'; }
-    function role() { return assistantActive() ? 'assistant' : access().users[email()].role; }
+    function activeUser() { return signedIn() && accessExists() && access().users[email()].enabled == true; }
+    function admin() { return activeUser() && access().users[email()].role == 'admin'; }
+    function role() { return access().users[email()].role; }
     function workspaceOwnerEmail() {
-      return assistantActive() ? assistant().ownerEmail : (role() == 'assistant' ? access().users[email()].ownerEmail : email());
+      return role() == 'assistant' ? access().users[email()].ownerEmail : email();
     }
 
     match /settings/adminAccess {
       allow read: if activeUser();
       allow create, update: if admin();
       allow delete: if false;
-    }
-
-    match /administrativeAssistants/{assistantEmail} {
-      allow read: if admin() || (activeUser() && (assistantEmail == email() || resource.data.ownerEmail == email()));
-      allow create: if admin() || (baseActive()
-        && role() != 'assistant'
-        && request.resource.data.role == 'assistant'
-        && request.resource.data.ownerEmail == email());
-      allow update: if admin() || (baseActive()
-        && role() != 'assistant'
-        && resource.data.ownerEmail == email()
-        && request.resource.data.ownerEmail == resource.data.ownerEmail
-        && request.resource.data.role == 'assistant');
-      allow delete: if admin() || (baseActive() && role() != 'assistant' && resource.data.ownerEmail == email());
     }
 
     match /adminDocuments/{docId} {
