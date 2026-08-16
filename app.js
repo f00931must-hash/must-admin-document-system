@@ -193,8 +193,13 @@ const AI_NEEDS_FIELDS=[
   "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
   "familyReferral","familyReferralOther","parentExpectation","selfExpectation","selfExpectationAction","selfExpectationNote"
 ];
-const AI_SERVICE_FIELDS=[
-  "studentNeedsAssessment","learningSupport","learningSupportNote","emotionalSupport","emotionalSupportNote",
+const AI_SERVICE_NARRATIVE_FIELDS=[
+  "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
+  "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
+  "studentNeedsAssessment"
+];
+const AI_SERVICE_PLAN_FIELDS=[
+  "learningSupport","learningSupportNote","emotionalSupport","emotionalSupportNote",
   "environmentSupport","environmentSupportNote","academicPlanningSupport","academicPlanningSupportNote",
   "careerSupport","careerSupportNote","adminSupport","adminSupportNote","supportAdjustment","supportAdjustmentNote",
   "relatedServices","relatedServicesNote","otherServiceSuggestions","otherServiceSuggestionsNote"
@@ -208,12 +213,20 @@ function aiFieldLabel(name){
 }
 function buildAiSource(mode){
   const values=formData();
-  const fields=mode==="service-evaluation"?AI_SERVICE_FIELDS:AI_NEEDS_FIELDS;
-  return fields.map(name=>{
+  const formatFields=fields=>fields.map(name=>{
     const value=values[name];
     const text=Array.isArray(value)?value.filter(Boolean).join("、"):String(value||"").trim();
     return text?`${aiFieldLabel(name)}：${text}`:"";
   }).filter(Boolean).join("\n");
+  if(mode==="service-evaluation"){
+    const narrative=formatFields(AI_SERVICE_NARRATIVE_FIELDS);
+    const plans=formatFields(AI_SERVICE_PLAN_FIELDS);
+    return [
+      narrative?`【主要評估依據：請優先統整，不要逐欄重述】\n${narrative}`:"",
+      plans?`【目前服務規劃：僅供核對方向，不要逐項羅列】\n${plans}`:""
+    ].filter(Boolean).join("\n\n");
+  }
+  return formatFields(AI_NEEDS_FIELDS);
 }
 function attachUndoButton(button){
   const buttonGroup=document.createElement("div");
@@ -298,7 +311,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.10",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.11",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
