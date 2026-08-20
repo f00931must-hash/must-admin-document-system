@@ -1,0 +1,6 @@
+行政文書 v1.0.12－小幫手登入修正
+
+1. 修正小幫手已由入口同步，但行政文書仍顯示權限不足的問題。
+2. 登入時會同時讀取 settings/adminAccess 與 administrativeAssistants。
+3. 小幫手仍進入所屬老師的 ISP 工作區，且不能刪除 ISP。
+4. 未修改 ISP 表單、Word 匯出、AI 功能、集合名稱或既有文件資料。
