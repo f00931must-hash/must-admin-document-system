@@ -21,7 +21,7 @@ function sortedIspDocuments(){const mode=$("ispSort")?.value||"admission-desc";r
 function renderDocs(){const list=$("docList");list.innerHTML='';const items=sortedIspDocuments();if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';const year=admissionYear(d.form?.admissionDate);div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`入學年 ${year}`:'尚未填入學年'}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};const deleteButton=div.querySelector('.delete-doc');if(deleteButton)deleteButton.onclick=async()=>{const name=d.studentName||'未命名';if(!confirm(`確定要永久刪除「${name}」的新生 ISP 總表嗎？\n\n刪除後無法復原。`))return;if(!confirm(`請再次確認：真的要永久刪除「${name}」嗎？`))return;deleteButton.disabled=true;try{await deleteDoc(doc(db,'adminDocuments',d.id));ispDocuments=ispDocuments.filter(item=>item.id!==d.id);renderDocs();alert('已永久刪除，系統不會保留垃圾桶或封存副本。');}catch(error){console.error(error);deleteButton.disabled=false;alert('刪除失敗，請確認帳號權限或稍後再試。');}};list.appendChild(div);}}
 async function loadDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,'adminDocuments'),where('ownerEmail','==',workspaceOwnerEmail()));const snap=await getDocs(q);ispDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(!item.type||item.type==='ISP')ispDocuments.push(item);});renderDocs();}
 $("ispSort").onchange=renderDocs;
-onAuthStateChanged(auth,async user=>{currentUser=user;currentAccess=null;$("appView").classList.add('hidden');$("loginView").classList.add('hidden');$("deniedView").classList.add('hidden');if(!user){$("loginView").classList.remove('hidden');return}try{const email=normalizedEmail(user.email);const [settingsSnap,assistantSnap]=await Promise.all([getDoc(doc(db,'settings','adminAccess')),getDoc(doc(db,'administrativeAssistants',email))]);const access=assistantSnap.exists()?assistantSnap.data():settingsSnap.data()?.users?.[email];if(!access||access.enabled===false)throw new Error('not-authorized');currentAccess=access;$("appView").classList.remove('hidden');$("userEmail").textContent=`${access.displayName||email}\n${email}`;}catch(err){console.error(err);$("deniedMessage").textContent='此帳號尚未由資源教室行政平台開通行政文書權限，或權限尚未同步。';$("deniedView").classList.remove('hidden');}});
+onAuthStateChanged(auth,async user=>{currentUser=user;currentAccess=null;$("appView").classList.add('hidden');$("loginView").classList.add('hidden');$("deniedView").classList.add('hidden');if(!user){$("loginView").classList.remove('hidden');return}try{const email=String(user.email||'').trim().toLowerCase();const snap=await getDoc(doc(db,'settings','adminAccess'));const access=snap.data()?.users?.[email];if(!access||access.enabled===false)throw new Error('not-authorized');currentAccess=access;$("appView").classList.remove('hidden');$("userEmail").textContent=`${access.displayName||email}\n${email}`;}catch(err){console.error(err);$("deniedMessage").textContent='此帳號尚未由資源教室行政平台開通行政文書權限，或權限尚未同步。';$("deniedView").classList.remove('hidden');}});
 $("deniedLogoutBtn").onclick=()=>signOut(auth);
 
 
@@ -184,14 +184,14 @@ function getIspAiText(payload){
 }
 
 const AI_NEEDS_FIELDS=[
-  "disabilityFeatures","currentDisabilityStatus","otherHealthDescription",
+  // 僅限「貳、現況能力摘要與特殊教育需求服務」中，
+  // 位於學生需求評估之前的欄位；不得傳送「壹、基本資料」。
   "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
   "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
   "strengthRelationship","strengthEmotion","strengthIllnessAwareness","strengthProblemSolving",
   "strengthResourceSeeking","strengthSupportSystem","strengthFamilyInteraction","strengthFamilyEconomy",
   "analysisSelfCare","analysisStudyWork","analysisMobility","analysisTransport","analysisCommunication",
-  "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
-  "familyReferral","familyReferralOther","parentExpectation","selfExpectation","selfExpectationAction","selfExpectationNote"
+  "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure"
 ];
 const AI_SERVICE_NARRATIVE_FIELDS=[
   "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
@@ -311,7 +311,7 @@ $("downloadBtn").onclick=async()=>{
     if (typeof window.docxtemplater === "undefined") throw new Error("Word 元件 Docxtemplater 載入失敗，請重新整理頁面後再試");
     if (typeof window.saveAs === "undefined") throw new Error("下載元件 FileSaver 載入失敗，請重新整理頁面後再試");
     const f=formData();
-    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.11",{cache:"no-store"});
+    const res=await fetch("./templates/ISP-template-v0.4.2.docx?v=1.0.12",{cache:"no-store"});
     if(!res.ok) throw new Error("無法讀取 ISP Word 母版");
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
