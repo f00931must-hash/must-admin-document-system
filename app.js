@@ -322,3 +322,138 @@ $("downloadBtn").onclick=async()=>{
     saveAs(blob,`${safe}_新生ISP總表.docx`);
   }catch(err){ console.error(err); alert(`Word 產生失敗：${err?.message||err}`); }
 };
+
+// 課表格式優化：資料只保存在目前頁面記憶體，不讀寫 Firestore。
+const timetablePeriods=[
+  {period:1,start:"0810",end:"0900",time:"08:10–09:00"},
+  {period:2,start:"0910",end:"1000",time:"09:10–10:00"},
+  {period:3,start:"1010",end:"1100",time:"10:10–11:00"},
+  {period:4,start:"1110",end:"1200",time:"11:10–12:00"},
+  {period:5,start:"1310",end:"1400",time:"13:10–14:00"},
+  {period:6,start:"1410",end:"1500",time:"14:10–15:00"},
+  {period:7,start:"1510",end:"1600",time:"15:10–16:00"},
+  {period:8,start:"1610",end:"1700",time:"16:10–17:00"},
+  {period:9,start:"1710",end:"1800",time:"17:10–18:00"},
+  {period:10,start:"1745",end:"1830",time:"17:45–18:30"}
+];
+let timetableClipboardHtml="";
+let parsedTimetable=null;
+
+function timetablePlainText(html){
+  const holder=document.createElement("div");
+  holder.innerHTML=html;
+  holder.querySelectorAll("script,style,noscript").forEach(node=>node.remove());
+  return holder.textContent||"";
+}
+
+function timetableCellLines(cell){
+  const holder=document.createElement("div");
+  holder.innerHTML=cell.innerHTML
+    .replace(/<br\s*\/?>/gi,"\n")
+    .replace(/<\/(?:div|p|li|section|article|h[1-6])>/gi,"\n");
+  return (holder.textContent||"").split(/\n+/).map(line=>line.replace(/\u00a0/g," ").trim()).filter(Boolean);
+}
+
+function removeEnglishCourseName(line){
+  return line
+    .replace(/[A-Za-z][A-Za-z0-9\s.,()\/&:'’+\-]*/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function cleanTimetableCourse(cell){
+  const ignored=/^(課程|Course|星期|Mon|Tue|Wed|Thu|Thr|Fri|Sat|Sun)$/i;
+  const lines=timetableCellLines(cell)
+    .map(removeEnglishCourseName)
+    .map(line=>line.replace(/^[｜|]+|[｜|]+$/g,"").trim())
+    .filter(line=>line&&!ignored.test(line));
+  return [...new Set(lines)].join("\n");
+}
+
+function timetablePeriodFromCell(cell){
+  const digits=(cell.textContent||"").replace(/\D/g,"");
+  return timetablePeriods.find(item=>digits.startsWith(`${item.period}${item.start}${item.end}`))||null;
+}
+
+function parseTimetableHtml(html){
+  if(!html)throw new Error("沒有取得網站表格格式，請直接從網站按 Ctrl+A、Ctrl+C 後貼上。");
+  const holder=document.createElement("div");
+  holder.innerHTML=html;
+  const tables=[...holder.querySelectorAll("table")];
+  const table=tables.find(item=>/星期一/.test(item.textContent||"")&&/星期二/.test(item.textContent||""));
+  if(!table)throw new Error("找不到課表。請確認貼上的是『本學期課表查詢』完整頁面。");
+  const allText=(holder.textContent||"").replace(/\u00a0/g," ");
+  const academic=allText.match(/(\d{3})\s*學年[\s\S]{0,20}?第?\s*([123])\s*學期/);
+  const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
+  const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s©]{2,20})/i);
+  const rows=[...table.rows];
+  const header=rows.find(row=>/星期一/.test(row.textContent||""));
+  if(!header)throw new Error("課表星期欄位無法辨識。");
+  const headers=[...header.cells].map(cell=>(cell.textContent||"").replace(/\s+/g,""));
+  const dayIndexes=["星期一","星期二","星期三","星期四","星期五","星期六"].map(day=>headers.findIndex(text=>text.includes(day)));
+  if(dayIndexes.some(index=>index<0))throw new Error("課表缺少星期一至星期六欄位，請重新複製完整頁面。");
+  const courses={};
+  timetablePeriods.forEach(item=>{for(let day=1;day<=6;day++)courses[`p${item.period}d${day}`]="";});
+  for(const row of rows){
+    if(row===header||row.cells.length<Math.max(...dayIndexes)+1)continue;
+    const period=timetablePeriodFromCell(row.cells[0]);
+    if(!period)continue;
+    dayIndexes.forEach((cellIndex,dayOffset)=>{
+      courses[`p${period.period}d${dayOffset+1}`]=cleanTimetableCourse(row.cells[cellIndex]);
+    });
+  }
+  return {
+    academicYear:academic?.[1]||"",
+    semester:academic?.[2]||"",
+    studentId:id?.[1]||"",
+    studentName:name?.[1]?.replace(/[｜|].*$/,"")||"",
+    courses
+  };
+}
+
+function renderTimetablePreview(data){
+  $("timetableMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}`;
+  const body=$("timetablePreviewBody");body.innerHTML="";
+  for(const item of timetablePeriods){
+    const row=document.createElement("tr");
+    const periodCell=document.createElement("td");periodCell.textContent=`${item.period}\n${item.time}`;row.appendChild(periodCell);
+    for(let day=1;day<=6;day++){const cell=document.createElement("td");cell.textContent=data.courses[`p${item.period}d${day}`]||"";row.appendChild(cell);}
+    body.appendChild(row);
+  }
+  $("timetablePreview").classList.remove("hidden");
+}
+
+function runTimetableParsing(){
+  const status=$("timetableStatus");status.classList.remove("error");
+  try{
+    parsedTimetable=parseTimetableHtml(timetableClipboardHtml);
+    renderTimetablePreview(parsedTimetable);
+    status.textContent="課表已完成整理。請確認預覽後下載 Word。";
+  }catch(error){parsedTimetable=null;$("timetablePreview").classList.add("hidden");status.textContent=error.message;status.classList.add("error");}
+}
+
+$("openTimetableBtn").onclick=()=>showPage("timetable");
+$("timetablePaste").addEventListener("paste",event=>{
+  event.preventDefault();
+  timetableClipboardHtml=event.clipboardData?.getData("text/html")||"";
+  const plain=event.clipboardData?.getData("text/plain")||timetablePlainText(timetableClipboardHtml);
+  $("timetablePaste").textContent=plain;
+  $("timetableStatus").textContent="已貼上內容，請按「格式優化」。";
+  $("timetableStatus").classList.remove("error");
+  $("timetablePreview").classList.add("hidden");parsedTimetable=null;
+});
+$("parseTimetableBtn").onclick=runTimetableParsing;
+$("clearTimetableBtn").onclick=()=>{timetableClipboardHtml="";parsedTimetable=null;$("timetablePaste").textContent="";$("timetableStatus").textContent="";$("timetablePreview").classList.add("hidden");};
+$("downloadTimetableBtn").onclick=async()=>{
+  if(!parsedTimetable){alert("請先貼上課表並完成格式優化。");return;}
+  try{
+    const response=await fetch("./templates/timetable-template.docx?v=1.1.0",{cache:"no-store"});
+    if(!response.ok)throw new Error("無法讀取課表 Word 母版");
+    const zip=new window.PizZip(await response.arrayBuffer());
+    const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
+    word.render({...parsedTimetable,...parsedTimetable.courses});
+    const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    const safe=(parsedTimetable.studentName||parsedTimetable.studentId||"未命名").replace(/[\\/:*?"<>|]/g,"_");
+    saveAs(blob,`${safe}_課表.docx`);
+  }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
+};
