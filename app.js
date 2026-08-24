@@ -408,6 +408,7 @@ function parseTimetableHtml(html){
   const academic=allText.match(/(\d{3})\s*學年[\s\S]{0,20}?第?\s*([123])\s*學期/);
   const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
   const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s©]{2,20})/i);
+  const classInfo=allText.match(/MUST\s*Stdinfo\s+([^\s]{2,30})\s+(?:[A-Za-z]\d{7,12}|\d{7,12})/i)||allText.match(/(?:學生)?班級\s*[:：]?\s*([^\s]{2,30})/);
   const rows=[...table.rows];
   const header=rows.find(row=>/星期一/.test(row.textContent||""));
   if(!header)throw new Error("課表星期欄位無法辨識。");
@@ -429,12 +430,13 @@ function parseTimetableHtml(html){
     semester:academic?.[2]||"",
     studentId:id?.[1]||"",
     studentName:name?.[1]?.replace(/[｜|].*$/,"")||"",
+    studentClass:classInfo?.[1]||"",
     courses
   };
 }
 
 function renderTimetablePreview(data){
-  $("timetableMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}`;
+  $("timetableMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}　班級：${data.studentClass||"未辨識"}`;
   const body=$("timetablePreviewBody");body.innerHTML="";
   const visiblePeriods=timetablePeriods.filter(item=>Array.from({length:6},(_,index)=>data.courses[`p${item.period}d${index+1}`]).some(Boolean));
   for(const item of visiblePeriods){
@@ -470,7 +472,7 @@ $("clearTimetableBtn").onclick=()=>{timetableClipboardHtml="";parsedTimetable=nu
 $("downloadTimetableBtn").onclick=async()=>{
   if(!parsedTimetable){alert("請先貼上課表並完成格式優化。");return;}
   try{
-    const response=await fetch("./templates/timetable-template.docx?v=1.1.2",{cache:"no-store"});
+    const response=await fetch("./templates/timetable-template.docx?v=1.3.0",{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取課表 Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
@@ -640,3 +642,243 @@ $("downloadGradeBtn").onclick=async()=>{
     saveAs(blob,`${safe}_${parsedGrade.type==="midterm"?"期中":"學期"}成績.docx`);
   }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
 };
+
+// ISP 簽收表：一次解析多份整理後課表，所有資料只留在目前頁面記憶體。
+let receiptStudents=[];
+const WORD_NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const receiptClassPattern=/(四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]/;
+
+function maskReceiptStudentName(name){
+  const chars=Array.from((name||"").trim());
+  if(chars.length<2)return name||"";
+  return `${chars[0]}○${chars.slice(2).join("")}`;
+}
+
+function wordNodeText(node){
+  let output="";
+  for(const child of node.childNodes||[]){
+    if(child.localName==="t")output+=child.textContent||"";
+    else if(child.localName==="br"||child.localName==="cr")output+="\n";
+    else{
+      output+=wordNodeText(child);
+      if(child.localName==="p")output+="\n";
+    }
+  }
+  return output.replace(/\u00a0/g," ");
+}
+
+function parseReceiptCourseCell(cell){
+  const lines=wordNodeText(cell).split(/\r?\n/).map(line=>line.replace(/\s+/g," ").trim()).filter(Boolean);
+  const classIndex=lines.findIndex(line=>receiptClassPattern.test(line));
+  if(classIndex<1)return null;
+  const className=lines[classIndex].match(receiptClassPattern)?.[0]||lines[classIndex];
+  const teacher=lines.slice(classIndex+1).reverse().find(line=>line&&!/教室|樓|實驗室/.test(line))||"";
+  const courseName=lines.slice(0,classIndex).join("－").replace(/－{2,}/g,"－");
+  if(!courseName)return null;
+  return {courseName,className,teacher};
+}
+
+async function parseReceiptTimetableFile(file){
+  const zip=new window.PizZip(await file.arrayBuffer());
+  const xmlFile=zip.file("word/document.xml");
+  if(!xmlFile)throw new Error("不是可辨識的 Word 課表");
+  const xml=new DOMParser().parseFromString(xmlFile.asText(),"application/xml");
+  if(xml.getElementsByTagName("parsererror").length)throw new Error("Word 內容無法讀取");
+  const allText=[...xml.getElementsByTagNameNS(WORD_NS,"t")].map(node=>node.textContent||"").join(" ").replace(/\s+/g," ");
+  const academic=allText.match(/(\d{2,3})\s*學年[\s\S]{0,30}?第?\s*([123])\s*學期/);
+  const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
+  const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s]{2,20})/i);
+  const classInfo=allText.match(/班級\s*[:：]?\s*([^\s]{2,30})/);
+  const tables=[...xml.getElementsByTagNameNS(WORD_NS,"tbl")];
+  if(!tables.length)throw new Error("找不到課表表格");
+  const rows=[...tables[0].getElementsByTagNameNS(WORD_NS,"tr")];
+  const courses=[];
+  const seen=new Set();
+  rows.slice(1).forEach(row=>{
+    const cells=[...row.childNodes].filter(node=>node.localName==="tc");
+    cells.slice(1).forEach(cell=>{
+      const course=parseReceiptCourseCell(cell);
+      if(!course)return;
+      const key=`${course.courseName}|${course.className}|${course.teacher}`;
+      if(!seen.has(key)){seen.add(key);courses.push(course);}
+    });
+  });
+  if(!courses.length)throw new Error("沒有辨識到課程資料");
+  const courseClasses=[...new Set(courses.map(course=>course.className).filter(Boolean))];
+  const explicitClass=(classInfo?.[1]||"").trim();
+  const inferredClass=!explicitClass&&courseClasses.length===1?courseClasses[0]:"";
+  return {
+    key:id?.[1]||`${name?.[1]||file.name}-${file.size}`,
+    fileName:file.name,
+    academicYear:academic?.[1]||"",
+    semester:academic?.[2]||"",
+    studentId:id?.[1]||"",
+    studentName:(name?.[1]||"").replace(/[｜|].*$/,"").trim(),
+    studentClass:explicitClass||inferredClass,
+    classSource:explicitClass?"document":inferredClass?"inferred":"missing",
+    courses
+  };
+}
+
+function receiptStudentStatus(student){
+  if(!student.studentName)return {type:"error",text:"學生姓名未辨識"};
+  if(student.courses.some(course=>!course.teacher))return {type:"error",text:"任課老師未辨識"};
+  if(!student.studentClass)return {type:"warning",text:"班級待確認"};
+  if(student.classSource==="inferred")return {type:"warning",text:"班級為推測值"};
+  return {type:"ok",text:"辨識完成"};
+}
+
+function renderReceiptReview(){
+  const body=$("receiptReviewBody");body.innerHTML="";
+  receiptStudents.forEach(student=>{
+    const teachers=new Set(student.courses.map(course=>course.teacher).filter(Boolean));
+    const status=receiptStudentStatus(student);
+    const row=document.createElement("tr");
+    row.innerHTML=`<td>${gradeEscape(student.fileName)}</td><td>${gradeEscape(maskReceiptStudentName(student.studentName)||"未辨識")}</td><td><input class="receipt-class-input" value="${gradeEscape(student.studentClass)}" aria-label="${gradeEscape(student.studentName)}的班級"></td><td>${student.courses.length}</td><td>${teachers.size}</td><td><span class="receipt-state ${status.type}">${status.text}</span></td><td><button type="button" class="delete-doc receipt-remove">移除</button></td>`;
+    row.querySelector(".receipt-class-input").addEventListener("change",event=>{student.studentClass=event.target.value.trim();student.classSource="manual";renderReceiptReview();});
+    row.querySelector(".receipt-remove").onclick=()=>{receiptStudents=receiptStudents.filter(item=>item!==student);renderReceiptReview();};
+    body.appendChild(row);
+  });
+  const years=[...new Set(receiptStudents.map(item=>item.academicYear).filter(Boolean))];
+  const semesters=[...new Set(receiptStudents.map(item=>item.semester).filter(Boolean))];
+  if(!$('receiptAcademicYear').value&&years.length)$('receiptAcademicYear').value=years[0];
+  if(semesters.length===1)$('receiptSemester').value=semesters[0];
+  const issues=[];
+  if(years.length>1)issues.push(`包含不同學年度：${years.join("、")}`);
+  if(semesters.length>1)issues.push(`包含不同學期：${semesters.join("、")}`);
+  const pending=receiptStudents.filter(item=>receiptStudentStatus(item).type!=="ok").length;
+  if(pending)issues.push(`有 ${pending} 位學生需要確認`);
+  $("receiptWarning").textContent=issues.join("；");
+  $("receiptWarning").classList.toggle("hidden",!issues.length);
+  $("receiptReview").classList.toggle("hidden",!receiptStudents.length);
+}
+
+async function readReceiptFiles(){
+  const files=[...$("receiptFiles").files];
+  const status=$("receiptStatus");status.classList.remove("error");
+  if(!files.length){status.textContent="請先選取整理後的 Word 課表。";status.classList.add("error");return;}
+  const parsed=[];const errors=[];
+  for(const file of files){
+    status.textContent=`正在讀取 ${file.name}…`;
+    try{parsed.push(await parseReceiptTimetableFile(file));}
+    catch(error){errors.push(`${file.name}：${error.message}`);}
+  }
+  const unique=new Map(receiptStudents.map(item=>[item.key,item]));
+  parsed.forEach(item=>unique.set(item.key,item));
+  receiptStudents=[...unique.values()];
+  renderReceiptReview();
+  status.textContent=`完成讀取 ${parsed.length} 份課表，目前共有 ${receiptStudents.length} 位學生。${errors.length?` ${errors.length} 份失敗：${errors.join("；")}`:""}`;
+  status.classList.toggle("error",Boolean(errors.length));
+}
+
+function receiptExportData(){
+  const academicYear=$("receiptAcademicYear").value.trim();
+  const semester=$("receiptSemester").value;
+  if(!receiptStudents.length)throw new Error("請先匯入課表");
+  if(!academicYear)throw new Error("請填寫學年度");
+  const missingClass=receiptStudents.filter(item=>!item.studentClass);
+  if(missingClass.length)throw new Error(`仍有 ${missingClass.length} 位學生缺少班級`);
+  const missingTeacher=receiptStudents.flatMap(item=>item.courses.filter(course=>!course.teacher));
+  if(missingTeacher.length)throw new Error("仍有課程缺少任課老師，請重新確認課表");
+  return {academicYear,semester,students:receiptStudents};
+}
+
+const receiptThinBorder={top:{style:"thin",color:{argb:"FF000000"}},left:{style:"thin",color:{argb:"FF000000"}},bottom:{style:"thin",color:{argb:"FF000000"}},right:{style:"thin",color:{argb:"FF000000"}}};
+function styleReceiptRange(sheet,fromRow,toRow,fromCol,toCol,{fill=null,bold=false,size=12}={}){
+  for(let row=fromRow;row<=toRow;row++)for(let col=fromCol;col<=toCol;col++){
+    const cell=sheet.getCell(row,col);
+    cell.font={name:"標楷體",size,bold};
+    cell.alignment={horizontal:"center",vertical:"middle",wrapText:true};
+    cell.border=receiptThinBorder;
+    if(fill)cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}};
+  }
+}
+function setupReceiptSheet(sheet){
+  sheet.pageSetup={paperSize:9,orientation:"portrait",fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.35,right:0.35,top:0.45,bottom:0.45,header:0.2,footer:0.2}};
+  sheet.properties.defaultRowHeight=24;
+  sheet.views=[{showGridLines:false}];
+}
+function uniqueReceiptSheetName(name,used){
+  const base=(name||"未命名").replace(/[\\/?*\[\]:]/g,"_").slice(0,31)||"未命名";
+  let result=base,index=2;
+  while(used.has(result)){const suffix=`_${index++}`;result=`${base.slice(0,31-suffix.length)}${suffix}`;}
+  used.add(result);return result;
+}
+
+async function buildTeacherReceiptWorkbook(data){
+  const workbook=new window.ExcelJS.Workbook();
+  workbook.creator="明新科技大學資源教室";
+  const byTeacher=new Map();
+  data.students.forEach(student=>student.courses.forEach(course=>{
+    if(!byTeacher.has(course.teacher))byTeacher.set(course.teacher,[]);
+    const rows=byTeacher.get(course.teacher);
+    const key=`${course.courseName}|${student.studentClass}|${student.key}`;
+    if(!rows.some(item=>item.key===key))rows.push({key,courseName:course.courseName,studentClass:student.studentClass,studentName:maskReceiptStudentName(student.studentName)});
+  }));
+  const used=new Set();
+  [...byTeacher.entries()].sort(([a],[b])=>a.localeCompare(b,"zh-Hant")).forEach(([teacher,records])=>{
+    const sheet=workbook.addWorksheet(uniqueReceiptSheetName(teacher,used));setupReceiptSheet(sheet);
+    sheet.columns=[{width:18},{width:18},{width:18},{width:18},{width:20}];
+    sheet.mergeCells("A1:A2");sheet.mergeCells("B1:B2");sheet.mergeCells("C1:E2");
+    sheet.getCell("A1").value=`${data.academicYear}學年度`;sheet.getCell("B1").value=data.semester==="3"?"暑期":`第${data.semester}學期`;sheet.getCell("C1").value="個別化支持計畫（ISP）簽收單";
+    styleReceiptRange(sheet,1,2,1,5,{bold:true,size:14});sheet.getRow(1).height=30;sheet.getRow(2).height=30;
+    sheet.getCell("A7").value="致：";sheet.getCell("B7").value=teacher;sheet.getCell("C7").value="老師";
+    ["A7","B7","C7"].forEach(address=>{const cell=sheet.getCell(address);cell.font={name:"標楷體",size:12,bold:true};cell.alignment={horizontal:"center",vertical:"middle"};});
+    sheet.mergeCells("A10:C11");sheet.mergeCells("D10:D11");sheet.mergeCells("E10:E11");
+    sheet.getCell("A10").value="課程";sheet.getCell("D10").value="班級";sheet.getCell("E10").value="學生";styleReceiptRange(sheet,10,11,1,5,{fill:"FFD9EAF7",bold:true});
+    const sorted=[...records].sort((a,b)=>`${a.courseName}|${a.studentClass}|${a.studentName}`.localeCompare(`${b.courseName}|${b.studentClass}|${b.studentName}`,"zh-Hant"));
+    let row=12;
+    sorted.forEach(record=>{sheet.getCell(row,1).value=record.courseName;sheet.getCell(row,4).value=record.studentClass;sheet.getCell(row,5).value=record.studentName;styleReceiptRange(sheet,row,row,1,5);sheet.getRow(row).height=30;row++;});
+    let groupStart=12;
+    for(let index=1;index<=sorted.length;index++){
+      const previous=sorted[index-1],current=sorted[index];
+      if(index===sorted.length||current.courseName!==previous.courseName||current.studentClass!==previous.studentClass){
+        const groupEnd=11+index;
+        sheet.mergeCells(groupStart,1,groupEnd,3);
+        if(groupEnd>groupStart)sheet.mergeCells(groupStart,4,groupEnd,4);
+        groupStart=groupEnd+1;
+      }
+    }
+    sheet.getCell(row+2,3).value="老師簽名：";sheet.mergeCells(row+2,4,row+2,5);styleReceiptRange(sheet,row+2,row+2,3,5,{bold:true});sheet.getRow(row+2).height=36;
+    sheet.pageSetup.printArea=`A1:E${row+2}`;
+  });
+  return workbook;
+}
+
+async function buildStudentReceiptWorkbook(data){
+  const workbook=new window.ExcelJS.Workbook();
+  workbook.creator="明新科技大學資源教室";
+  const used=new Set();
+  [...data.students].sort((a,b)=>a.studentName.localeCompare(b.studentName,"zh-Hant")).forEach(student=>{
+    const masked=maskReceiptStudentName(student.studentName);
+    const sheet=workbook.addWorksheet(uniqueReceiptSheetName(masked,used));setupReceiptSheet(sheet);
+    sheet.columns=[{width:8},{width:18},{width:18},{width:18},{width:18},{width:18}];
+    sheet.mergeCells("A1:B2");sheet.mergeCells("C1:C2");sheet.mergeCells("D1:F2");
+    sheet.getCell("A1").value=`${data.academicYear}學年度`;sheet.getCell("C1").value=data.semester==="3"?"暑期":`第${data.semester}學期`;sheet.getCell("D1").value="個別化支持計畫（ISP）簽收單";
+    styleReceiptRange(sheet,1,2,1,6,{bold:true,size:14});sheet.getRow(1).height=30;sheet.getRow(2).height=30;
+    sheet.getCell("A4").value="班級：";sheet.getCell("B4").value=student.studentClass;sheet.getCell("C4").value="學生：";sheet.getCell("D4").value=masked;
+    for(let col=1;col<=4;col++){const cell=sheet.getCell(4,col);cell.font={name:"標楷體",size:12,bold:true};cell.alignment={horizontal:"center",vertical:"middle"};}
+    sheet.mergeCells("A7:A8");sheet.mergeCells("B7:D8");sheet.mergeCells("E7:E8");sheet.mergeCells("F7:F8");
+    sheet.getCell("A7").value="序號";sheet.getCell("B7").value="課程";sheet.getCell("E7").value="授課教師";sheet.getCell("F7").value="簽收";styleReceiptRange(sheet,7,8,1,6,{fill:"FFD9EAF7",bold:true});
+    const byTeacher=new Map();
+    student.courses.forEach(course=>{if(!byTeacher.has(course.teacher))byTeacher.set(course.teacher,[]);const list=byTeacher.get(course.teacher);if(!list.includes(course.courseName))list.push(course.courseName);});
+    let row=9,index=1;
+    [...byTeacher.entries()].sort(([a],[b])=>a.localeCompare(b,"zh-Hant")).forEach(([teacher,courses])=>{
+      sheet.getCell(row,1).value=index++;sheet.mergeCells(row,2,row,4);sheet.getCell(row,2).value=courses.join("\n");sheet.getCell(row,5).value=teacher;sheet.getCell(row,6).value="";styleReceiptRange(sheet,row,row,1,6);sheet.getRow(row).height=Math.max(30,courses.length*22);row++;
+    });
+    sheet.pageSetup.printArea=`A1:F${Math.max(row-1,9)}`;
+  });
+  return workbook;
+}
+
+async function saveReceiptWorkbook(workbook,fileName){
+  if(!window.ExcelJS)throw new Error("Excel 元件載入失敗，請重新整理頁面後再試");
+  const buffer=await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),fileName);
+}
+
+$("openIspReceiptBtn").onclick=()=>showPage("ispReceipt");
+$("parseReceiptFilesBtn").onclick=readReceiptFiles;
+$("clearReceiptFilesBtn").onclick=()=>{receiptStudents=[];$("receiptFiles").value="";$("receiptStatus").textContent="";$("receiptAcademicYear").value="";$("receiptReview").classList.add("hidden");};
+$("downloadTeacherReceiptBtn").onclick=async()=>{try{const data=receiptExportData();await saveReceiptWorkbook(await buildTeacherReceiptWorkbook(data),`${data.academicYear}-${data.semester}_ISP簽收單_以老師為主.xlsx`);}catch(error){alert(error.message);}};
+$("downloadStudentReceiptBtn").onclick=async()=>{try{const data=receiptExportData();await saveReceiptWorkbook(await buildStudentReceiptWorkbook(data),`${data.academicYear}-${data.semester}_ISP簽收單_以學生為主.xlsx`);}catch(error){alert(error.message);}};
