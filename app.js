@@ -630,7 +630,7 @@ $("downloadGradeBtn").onclick=async()=>{
   if(!parsedGrade){alert("請先貼上成績並完成格式優化。");return;}
   try{
     const template=parsedGrade.type==="midterm"?"grade-midterm-template.docx":"grade-semester-template.docx";
-    const response=await fetch(`./templates/${template}?v=1.2.0`,{cache:"no-store"});
+    const response=await fetch(`./templates/${template}?v=1.2.1`,{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取成績 Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
