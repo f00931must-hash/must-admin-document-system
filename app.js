@@ -408,7 +408,7 @@ function parseTimetableHtml(html){
   const academic=allText.match(/(\d{3})\s*學年[\s\S]{0,20}?第?\s*([123])\s*學期/);
   const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
   const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s©]{2,20})/i);
-  const classInfo=allText.match(/MUST\s*Stdinfo\s+([^\s]{2,30})\s+(?:[A-Za-z]\d{7,12}|\d{7,12})/i)||allText.match(/(?:學生)?班級\s*[:：]?\s*([^\s]{2,30})/);
+  const classInfo=allText.match(/MUST\s*Stdinfo\s+([^\s]{2,30})\s+(?:[A-Za-z]\d{7,12}|\d{7,12})/i)||allText.match(/((?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己])\s*(?:[A-Za-z]\d{7,12}|\d{7,12})/i)||allText.match(/(?:學生)?班級\s*[:：]?\s*((?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己])/);
   const rows=[...table.rows];
   const header=rows.find(row=>/星期一/.test(row.textContent||""));
   if(!header)throw new Error("課表星期欄位無法辨識。");
@@ -685,10 +685,12 @@ async function parseReceiptTimetableFile(file){
   const xml=new DOMParser().parseFromString(xmlFile.asText(),"application/xml");
   if(xml.getElementsByTagName("parsererror").length)throw new Error("Word 內容無法讀取");
   const allText=[...xml.getElementsByTagNameNS(WORD_NS,"t")].map(node=>node.textContent||"").join(" ").replace(/\s+/g," ");
+  const paragraphTexts=[...xml.getElementsByTagNameNS(WORD_NS,"p")].map(node=>wordNodeText(node).replace(/\s+/g," ").trim()).filter(Boolean);
+  const studentInfoText=paragraphTexts.find(text=>/學號/.test(text)&&/姓名/.test(text))||allText;
   const academic=allText.match(/(\d{2,3})\s*學年[\s\S]{0,30}?第?\s*([123])\s*學期/);
-  const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
-  const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s]{2,20})/i);
-  const classInfo=allText.match(/班級\s*[:：]?\s*([^\s]{2,30})/);
+  const id=studentInfoText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
+  const name=studentInfoText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([\u3400-\u9fff○〇]{2,10})/i);
+  const classInfo=studentInfoText.match(/班級\s*[:：]?\s*((?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己])/);
   const tables=[...xml.getElementsByTagNameNS(WORD_NS,"tbl")];
   if(!tables.length)throw new Error("找不到課表表格");
   const rows=[...tables[0].getElementsByTagNameNS(WORD_NS,"tr")];
