@@ -366,13 +366,30 @@ function removeEnglishCourseName(line){
     .trim();
 }
 
+function arrangeTimetableCourseLines(lines){
+  const unique=[...new Set(lines.map(line=>line.trim()).filter(Boolean))];
+  if(!unique.length)return [];
+  const joined=unique.join(" ").replace(/\s+/g," ").trim();
+  const classPattern=/(四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]/;
+  const classMatch=joined.match(classPattern);
+  if(!classMatch)return unique;
+  const className=classMatch[0].trim();
+  const before=joined.slice(0,classMatch.index).trim();
+  const after=joined.slice(classMatch.index+classMatch[0].length).trim();
+  const teachingMode=before.match(/(同步遠距教學|非同步遠距教學|遠距教學|遠距授課|實體教學|實體授課)$/);
+  const courseInfo=teachingMode
+    ? [before.slice(0,teachingMode.index).trim(),teachingMode[0]].filter(Boolean)
+    : before.split(/\s+/).filter(Boolean);
+  return [...courseInfo,className,...(after?[after]:[])];
+}
+
 function cleanTimetableCourse(cell){
   const ignored=/^(課程|Course|星期|Mon|Tue|Wed|Thu|Thr|Fri|Sat|Sun)$/i;
   const lines=timetableCellLines(cell)
     .map(removeEnglishCourseName)
     .map(line=>line.replace(/^[｜|]+|[｜|]+$/g,"").trim())
     .filter(line=>line&&!ignored.test(line));
-  return [...new Set(lines)].join("\n");
+  return arrangeTimetableCourseLines(lines).join("\n");
 }
 
 function timetablePeriodFromCell(cell){
