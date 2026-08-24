@@ -18,3 +18,4 @@
 .ai-undo-btn:hover:not(:disabled){background:#f1f5f9}.ai-undo-btn:disabled{cursor:not-allowed;opacity:.45}
 .ability-summary-grid>label{margin-bottom:4px}
 .form-page-break{border-top:2px dashed #b8c5d6;padding-top:16px}
+.grade-table th:first-child,.grade-table td:first-child{width:auto;text-align:center}.grade-table td:first-child{background:#fff;font-weight:400}.grade-table tbody td{font-size:11px}.grade-table th:nth-child(2),.grade-table td:nth-child(2){text-align:left}.grade-summary{margin-top:8px}.grade-summary th:first-child,.grade-summary td:first-child{width:auto;text-align:center}.grade-summary td:first-child{background:#fff;font-weight:400}

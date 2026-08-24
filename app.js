@@ -482,3 +482,161 @@ $("downloadTimetableBtn").onclick=async()=>{
     saveAs(blob,`${safe}_課表.docx`);
   }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
 };
+
+// 成績格式優化：同一入口自動辨識期中／學期，內容僅保存在頁面記憶體。
+let gradeClipboardHtml="";
+let gradeClipboardText="";
+let parsedGrade=null;
+const gradeEscape=value=>String(value??"").replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+
+function gradeCellText(cell){
+  return (cell?.innerText||cell?.textContent||"").replace(/\u00a0/g," ").replace(/[ \t]+/g," ").trim();
+}
+
+function gradeRowsFromClipboard(html,plain){
+  const rows=[];
+  if(html){
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    doc.querySelectorAll("table").forEach(table=>{
+      const tableRows=[];
+      table.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tfoot > tr, :scope > tr").forEach(row=>{
+        const cells=[...row.children].filter(cell=>/^(TD|TH)$/.test(cell.tagName)).map(gradeCellText);
+        if(cells.length)tableRows.push(cells);
+      });
+      if(tableRows.length)rows.push(tableRows);
+    });
+  }
+  if(!rows.length&&plain){
+    const tabRows=plain.split(/\r?\n/).map(line=>line.split("\t").map(value=>value.trim())).filter(row=>row.length>1);
+    if(tabRows.length)rows.push(tabRows);
+  }
+  return rows;
+}
+
+function gradeHeaderIndex(row,patterns,excluded=[]){
+  return row.findIndex(cell=>patterns.some(pattern=>pattern.test(cell))&&!excluded.some(pattern=>pattern.test(cell)));
+}
+
+function cleanChineseCourseName(value){
+  return value
+    .split(/\r?\n/)
+    .map(line=>line.replace(/[A-Za-z][A-Za-z0-9 .,'&/:()\-]*/g," ").replace(/\s+/g," ").trim())
+    .filter(line=>/[\u3400-\u9fff]/.test(line))
+    .join(" ")
+    .replace(/\s*[-–—]\s*$/g,"")
+    .trim();
+}
+
+function cleanChineseValue(value){
+  const chinese=(value||"").match(/[\u3400-\u9fff]+(?:[／/、－-][\u3400-\u9fff]+)*/g);
+  return chinese?chinese.join(""):String(value||"").trim();
+}
+
+function gradeMetadata(text){
+  const normalized=(text||"").replace(/\s+/g," ");
+  const year=normalized.match(/(\d{2,3})\s*學年/);
+  const semester=normalized.match(/(?:第\s*)?([12])\s*學期/);
+  const studentId=normalized.match(/(?:學號(?:\s*\(\s*Std\.?\s*ID\s*\))?|Std\.?\s*ID)\s*[:：]?\s*([A-Za-z0-9_-]+)/i);
+  const studentName=normalized.match(/(?:姓名(?:\s*\(\s*Name\s*\))?|Name)\s*[:：]?\s*([^\s｜|]+)/i);
+  return {academicYear:year?.[1]||"",semester:semester?.[1]||"",studentId:studentId?.[1]||"",studentName:studentName?.[1]||""};
+}
+
+function findGradeTable(tables){
+  for(const rows of tables){
+    const headerIndex=rows.findIndex(row=>row.some(cell=>/課號|Course\s*ID/i.test(cell))&&row.some(cell=>/課名|Course\s*Title/i.test(cell)));
+    if(headerIndex>=0)return {rows,headerIndex};
+  }
+  return null;
+}
+
+function parseGradeClipboard(html,plain){
+  const tables=gradeRowsFromClipboard(html,plain);
+  const target=findGradeTable(tables);
+  if(!target)throw new Error("沒有辨識到成績表格，請重新圈選包含欄位標題與成績內容的範圍再複製。");
+  const header=target.rows[target.headerIndex];
+  const type=header.some(cell=>/期中成績|Mid\s*Term/i.test(cell))?"midterm":"semester";
+  const courseIdIndex=gradeHeaderIndex(header,[/課號/i,/Course\s*ID/i]);
+  const courseNameIndex=gradeHeaderIndex(header,[/^\s*課名/i]);
+  const unitsIndex=gradeHeaderIndex(header,[/學分/i,/Units?/i]);
+  const selectionIndex=gradeHeaderIndex(header,[/選別/i,/Required|Elective/i]);
+  const classIndex=gradeHeaderIndex(header,[/班別/i,/Class/i]);
+  const midtermIndex=gradeHeaderIndex(header,[/期中成績/i,/Mid\s*Term/i]);
+  const finalIndex=gradeHeaderIndex(header,[/學期成績/i,/Final/i]);
+  const scoreIndex=gradeHeaderIndex(header,[/^\s*成績/i,/Score/i]);
+  if(courseIdIndex<0||courseNameIndex<0)throw new Error("成績欄位不完整，請將課號與課名欄位一起圈選複製。");
+  const courses=target.rows.slice(target.headerIndex+1).map(row=>({
+    courseId:(row[courseIdIndex]||"").replace(/\s+/g," ").trim(),
+    courseName:cleanChineseCourseName(row[courseNameIndex]||""),
+    className:classIndex>=0?cleanChineseValue(row[classIndex]):"",
+    selection:selectionIndex>=0?cleanChineseValue(row[selectionIndex]):"",
+    units:unitsIndex>=0?(row[unitsIndex]||"").trim():"",
+    midterm:midtermIndex>=0?(row[midtermIndex]||"").trim():"",
+    final:finalIndex>=0?(row[finalIndex]||"").trim():"",
+    score:scoreIndex>=0?(row[scoreIndex]||"").trim():""
+  })).filter(course=>course.courseId&&!/課號|Course\s*ID/i.test(course.courseId)&&course.courseName);
+  if(!courses.length)throw new Error("已找到成績欄位，但沒有辨識到課程內容；請確認圈選範圍包含課程資料列。");
+  const result={type,courses,...gradeMetadata(plain||timetablePlainText(html))};
+  if(type==="semester"){
+    const summaryHeaders=["共修學分","實得學分","未過學分","總分","平均","操行","名次"];
+    const summary={};
+    for(const rows of tables){
+      const index=rows.findIndex(row=>summaryHeaders.filter(label=>row.some(cell=>cell.includes(label))).length>=3);
+      if(index<0)continue;
+      const values=rows[index+1]||[];
+      summaryHeaders.forEach((label,position)=>{
+        const column=rows[index].findIndex(cell=>cell.includes(label));
+        summary[["totalUnits","earnedUnits","failedUnits","totalScore","average","conduct","rank"][position]]=column>=0?(values[column]||"").trim():"";
+      });
+      break;
+    }
+    Object.assign(result,{totalUnits:"",earnedUnits:"",failedUnits:"",totalScore:"",average:"",conduct:"",rank:""},summary);
+  }
+  return result;
+}
+
+function renderGradePreview(data){
+  $("gradeMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}　｜　${data.type==="midterm"?"期中成績":"學期成績"}`;
+  const headers=data.type==="midterm"?["課號","課名","班別","選別","學分","期中成績","學期成績"]:["課號","課名","學分","選別","成績"];
+  const fields=data.type==="midterm"?["courseId","courseName","className","selection","units","midterm","final"]:["courseId","courseName","units","selection","score"];
+  $("gradePreviewHead").innerHTML=`<tr>${headers.map(header=>`<th>${header}</th>`).join("")}</tr>`;
+  $("gradePreviewBody").innerHTML=data.courses.map(course=>`<tr>${fields.map(field=>`<td>${gradeEscape(course[field]||"")}</td>`).join("")}</tr>`).join("");
+  if(data.type==="semester"){
+    $("gradeSummaryBody").innerHTML=`<tr>${["totalUnits","earnedUnits","failedUnits","totalScore","average","conduct","rank"].map(field=>`<td>${gradeEscape(data[field]||"")}</td>`).join("")}</tr>`;
+    $("gradeSummaryWrap").classList.remove("hidden");
+  }else $("gradeSummaryWrap").classList.add("hidden");
+  $("gradePreview").classList.remove("hidden");
+}
+
+$("openGradeBtn").onclick=()=>showPage("grade");
+$("gradePaste").addEventListener("paste",event=>{
+  event.preventDefault();
+  gradeClipboardHtml=event.clipboardData?.getData("text/html")||"";
+  gradeClipboardText=event.clipboardData?.getData("text/plain")||timetablePlainText(gradeClipboardHtml);
+  $("gradePaste").textContent=gradeClipboardText;
+  $("gradeStatus").textContent="已貼上內容，請按「格式優化」。";
+  $("gradeStatus").classList.remove("error");
+  $("gradePreview").classList.add("hidden");parsedGrade=null;
+});
+$("parseGradeBtn").onclick=()=>{
+  const status=$("gradeStatus");status.classList.remove("error");
+  try{
+    parsedGrade=parseGradeClipboard(gradeClipboardHtml,gradeClipboardText||$("gradePaste").innerText);
+    renderGradePreview(parsedGrade);
+    status.textContent=`已辨識為${parsedGrade.type==="midterm"?"期中":"學期"}成績，共 ${parsedGrade.courses.length} 門課。`;
+  }catch(error){parsedGrade=null;$("gradePreview").classList.add("hidden");status.textContent=error.message;status.classList.add("error");}
+};
+$("clearGradeBtn").onclick=()=>{gradeClipboardHtml="";gradeClipboardText="";parsedGrade=null;$("gradePaste").textContent="";$("gradeStatus").textContent="";$("gradePreview").classList.add("hidden");};
+$("downloadGradeBtn").onclick=async()=>{
+  if(!parsedGrade){alert("請先貼上成績並完成格式優化。");return;}
+  try{
+    const template=parsedGrade.type==="midterm"?"grade-midterm-template.docx":"grade-semester-template.docx";
+    const response=await fetch(`./templates/${template}?v=1.2.0`,{cache:"no-store"});
+    if(!response.ok)throw new Error("無法讀取成績 Word 母版");
+    const zip=new window.PizZip(await response.arrayBuffer());
+    const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
+    word.render(parsedGrade);
+    const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    const safe=(parsedGrade.studentName||parsedGrade.studentId||"未命名").replace(/[\\/:*?"<>|]/g,"_");
+    saveAs(blob,`${safe}_${parsedGrade.type==="midterm"?"期中":"學期"}成績.docx`);
+  }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
+};
