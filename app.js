@@ -419,7 +419,7 @@ function parseTimetableHtml(html){
 function renderTimetablePreview(data){
   $("timetableMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}`;
   const body=$("timetablePreviewBody");body.innerHTML="";
-  const visiblePeriods=timetablePeriods.filter(item=>item.period<=10||Array.from({length:6},(_,index)=>data.courses[`p${item.period}d${index+1}`]).some(Boolean));
+  const visiblePeriods=timetablePeriods.filter(item=>Array.from({length:6},(_,index)=>data.courses[`p${item.period}d${index+1}`]).some(Boolean));
   for(const item of visiblePeriods){
     const row=document.createElement("tr");
     const periodCell=document.createElement("td");periodCell.textContent=`${item.period}\n${item.time}`;row.appendChild(periodCell);
@@ -453,13 +453,13 @@ $("clearTimetableBtn").onclick=()=>{timetableClipboardHtml="";parsedTimetable=nu
 $("downloadTimetableBtn").onclick=async()=>{
   if(!parsedTimetable){alert("請先貼上課表並完成格式優化。");return;}
   try{
-    const response=await fetch("./templates/timetable-template.docx?v=1.1.1",{cache:"no-store"});
+    const response=await fetch("./templates/timetable-template.docx?v=1.1.2",{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取課表 Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
-    const latePeriodVisibility={};
-    for(let period=11;period<=15;period++)latePeriodVisibility[`show${period}`]=Array.from({length:6},(_,index)=>parsedTimetable.courses[`p${period}d${index+1}`]).some(Boolean);
-    word.render({...parsedTimetable,...parsedTimetable.courses,...latePeriodVisibility});
+    const periodVisibility={};
+    for(let period=1;period<=15;period++)periodVisibility[`show${period}`]=Array.from({length:6},(_,index)=>parsedTimetable.courses[`p${period}d${index+1}`]).some(Boolean);
+    word.render({...parsedTimetable,...parsedTimetable.courses,...periodVisibility});
     const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(parsedTimetable.studentName||parsedTimetable.studentId||"未命名").replace(/[\\/:*?"<>|]/g,"_");
     saveAs(blob,`${safe}_課表.docx`);
