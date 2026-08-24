@@ -334,7 +334,12 @@ const timetablePeriods=[
   {period:7,start:"1510",end:"1600",time:"15:10–16:00"},
   {period:8,start:"1610",end:"1700",time:"16:10–17:00"},
   {period:9,start:"1710",end:"1800",time:"17:10–18:00"},
-  {period:10,start:"1745",end:"1830",time:"17:45–18:30"}
+  {period:10,start:"1745",end:"1830",time:"17:45–18:30"},
+  {period:11,start:"1830",end:"1915",time:"18:30–19:15"},
+  {period:12,start:"1915",end:"2000",time:"19:15–20:00"},
+  {period:13,start:"2010",end:"2055",time:"20:10–20:55"},
+  {period:14,start:"2055",end:"2140",time:"20:55–21:40"},
+  {period:15,start:"2145",end:"2230",time:"21:45–22:30"}
 ];
 let timetableClipboardHtml="";
 let parsedTimetable=null;
@@ -414,7 +419,8 @@ function parseTimetableHtml(html){
 function renderTimetablePreview(data){
   $("timetableMeta").textContent=`${data.academicYear||"未辨識"}學年第${data.semester||"未辨識"}學期　學號：${data.studentId||"未辨識"}　姓名：${data.studentName||"未辨識"}`;
   const body=$("timetablePreviewBody");body.innerHTML="";
-  for(const item of timetablePeriods){
+  const visiblePeriods=timetablePeriods.filter(item=>item.period<=10||Array.from({length:6},(_,index)=>data.courses[`p${item.period}d${index+1}`]).some(Boolean));
+  for(const item of visiblePeriods){
     const row=document.createElement("tr");
     const periodCell=document.createElement("td");periodCell.textContent=`${item.period}\n${item.time}`;row.appendChild(periodCell);
     for(let day=1;day<=6;day++){const cell=document.createElement("td");cell.textContent=data.courses[`p${item.period}d${day}`]||"";row.appendChild(cell);}
@@ -447,11 +453,13 @@ $("clearTimetableBtn").onclick=()=>{timetableClipboardHtml="";parsedTimetable=nu
 $("downloadTimetableBtn").onclick=async()=>{
   if(!parsedTimetable){alert("請先貼上課表並完成格式優化。");return;}
   try{
-    const response=await fetch("./templates/timetable-template.docx?v=1.1.0",{cache:"no-store"});
+    const response=await fetch("./templates/timetable-template.docx?v=1.1.1",{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取課表 Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
-    word.render({...parsedTimetable,...parsedTimetable.courses});
+    const latePeriodVisibility={};
+    for(let period=11;period<=15;period++)latePeriodVisibility[`show${period}`]=Array.from({length:6},(_,index)=>parsedTimetable.courses[`p${period}d${index+1}`]).some(Boolean);
+    word.render({...parsedTimetable,...parsedTimetable.courses,...latePeriodVisibility});
     const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(parsedTimetable.studentName||parsedTimetable.studentId||"未命名").replace(/[\\/:*?"<>|]/g,"_");
     saveAs(blob,`${safe}_課表.docx`);
