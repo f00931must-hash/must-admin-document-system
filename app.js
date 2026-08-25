@@ -366,6 +366,18 @@ function removeEnglishCourseName(line){
     .trim();
 }
 
+function splitTimetableTeacherLocation(text){
+  const value=(text||"").replace(/\s+/g," ").trim();
+  if(!value)return [];
+  const parts=value.split(" ").filter(Boolean);
+  if(parts.length>1)return [parts[0],parts.slice(1).join(" ")];
+  const compoundSurname=/^(歐陽|司馬|上官|諸葛|夏侯|東方|尉遲|公孫)/.test(value);
+  const teacherLength=compoundSurname?4:3;
+  const teacher=value.slice(0,teacherLength);
+  const location=value.slice(teacherLength);
+  return teacher.length>=2&&/(?:樓|館|校區|教室|實驗室)/.test(location)?[teacher,location]:[value];
+}
+
 function arrangeTimetableCourseLines(lines){
   const unique=[...new Set(lines.map(line=>line.trim()).filter(Boolean))];
   if(!unique.length)return [];
@@ -380,7 +392,7 @@ function arrangeTimetableCourseLines(lines){
   const courseInfo=teachingMode
     ? [before.slice(0,teachingMode.index).trim(),teachingMode[0]].filter(Boolean)
     : before.split(/\s+/).filter(Boolean);
-  return [...courseInfo,className,...(after?[after]:[])];
+  return [...courseInfo,className,...splitTimetableTeacherLocation(after)];
 }
 
 function cleanTimetableCourse(cell){
@@ -672,7 +684,14 @@ function parseReceiptCourseCell(cell){
   const classIndex=lines.findIndex(line=>receiptClassPattern.test(line));
   if(classIndex<1)return null;
   const className=lines[classIndex].match(receiptClassPattern)?.[0]||lines[classIndex];
-  const teacher=lines.slice(classIndex+1).reverse().find(line=>line&&!/教室|樓|實驗室/.test(line))||"";
+  const trailing=lines.slice(classIndex+1);
+  let teacher=trailing.find(line=>line&&!/教室|樓|館|校區|實驗室/.test(line))||"";
+  if(!teacher){
+    for(const line of trailing){
+      const split=splitTimetableTeacherLocation(line);
+      if(split.length>1&&split[0]&&!/教室|樓|館|校區|實驗室/.test(split[0])){teacher=split[0];break;}
+    }
+  }
   const courseName=lines.slice(0,classIndex).join("－").replace(/－{2,}/g,"－");
   if(!courseName)return null;
   return {courseName,className,teacher};
