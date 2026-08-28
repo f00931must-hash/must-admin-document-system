@@ -182,6 +182,9 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
 function getIspAiText(payload){
   return String(payload?.polishedText ?? payload?.polished ?? payload?.text ?? payload?.result ?? payload?.output ?? "").trim();
 }
+function normalizedIspAiComparison(text){
+  return String(text||"").replace(/\s+/g,"").replace(/[，。；：、,.!！?？]/g,"").trim();
+}
 
 const AI_NEEDS_FIELDS=[
   // 僅限「貳、現況能力摘要與特殊教育需求服務」中，
@@ -260,16 +263,24 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
     const oldLabel=button.textContent;
     button.disabled=true; button.textContent="AI 潤飾中…";
     try{
-      const response=await fetch(ISP_AI_ENDPOINT,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({text:original,section:button.dataset.aiSection,documentType:"ISP"})
-      });
-      let payload={};
-      try{ payload=await response.json(); }catch{}
-      if(!response.ok) throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
-      const polished=getIspAiText(payload);
+      const requestPolish=async forceRewrite=>{
+        const response=await fetch(ISP_AI_ENDPOINT,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({text:original,mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"})
+        });
+        let payload={};
+        try{payload=await response.json();}catch{}
+        if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+        return getIspAiText(payload);
+      };
+      let polished=await requestPolish(false);
+      if(polished&&normalizedIspAiComparison(polished)===normalizedIspAiComparison(original))polished=await requestPolish(true);
       if(!polished) throw new Error("AI 沒有回傳可用內容");
+      if(normalizedIspAiComparison(polished)===normalizedIspAiComparison(original)){
+        alert("AI 判斷此格內容已符合正式文體，目前沒有可在不新增資訊下安全修改的地方。");
+        return;
+      }
       undoButton.dataset.original=original;
       textarea.value=polished;
       textarea.dispatchEvent(new Event("input",{bubbles:true}));
