@@ -1,3 +1,5 @@
+import "./isp-autosave-hotfix.js";
+
 // 請將 Firebase Console > 專案設定 > 你的應用程式(Web) 的設定貼到這裡。
 export const firebaseConfig = {
   apiKey: "AIzaSyDvH2-sryPBG-_TM6XT3tjZHJ6O0gfXLtI",
