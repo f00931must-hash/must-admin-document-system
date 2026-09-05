@@ -1,0 +1,1 @@
+app-router.js routes only /ai/isp-summary to the Cloud Run service. app-core.js preserves the previous full frontend logic. isp-autosave-hotfix.js handles automatic draft saving.
