@@ -471,7 +471,7 @@ function parseTimetableHtml(html){
   const allText=(holder.textContent||"").replace(/\u00a0/g," ");
   const academic=allText.match(/(\d{3})\s*學年[\s\S]{0,20}?第?\s*([123])\s*學期/);
   const id=allText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
-  const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([^\s©]{2,20})/i);
+  const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([\u3400-\u9fffO○〇]{2,10})/i);
   const explicitStudentClass=timetableClassFromSource(allText,id?.[1]||"");
   const rows=[...table.rows];
   const header=rows.find(row=>/星期一/.test(row.textContent||""));
