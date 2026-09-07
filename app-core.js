@@ -381,10 +381,15 @@ function splitTimetableTeacherLocation(text){
   const value=(text||"").replace(/\s+/g," ").trim();
   if(!value)return [];
   const parts=value.split(" ").filter(Boolean);
-  if(parts.length>1)return [parts[0],parts.slice(1).join(" ")];
-  const compoundSurname=/^(歐陽|司馬|上官|諸葛|夏侯|東方|尉遲|公孫)/.test(value);
+  const first=parts[0]||"";
+  const compoundSurname=/^(歐陽|司馬|上官|諸葛|夏侯|東方|尉遲|公孫)/.test(first);
   const teacherLength=compoundSurname?4:3;
-  const teacher=value.slice(0,teacherLength);
+  const teacher=first.slice(0,teacherLength);
+  const locationInFirst=first.slice(teacherLength);
+  if(teacher.length>=2&&/(?:樓|館|校區|教室|實驗室)/.test(locationInFirst)){
+    return [teacher,[locationInFirst,...parts.slice(1)].filter(Boolean).join(" ")];
+  }
+  if(parts.length>1)return [first,parts.slice(1).join(" ")];
   const location=value.slice(teacherLength);
   return teacher.length>=2&&/(?:樓|館|校區|教室|實驗室)/.test(location)?[teacher,location]:[value];
 }

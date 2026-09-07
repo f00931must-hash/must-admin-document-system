@@ -9,5 +9,5 @@ window.fetch=(input,init)=>{
   }catch(error){console.warn("ISP AI route fallback",error);}
   return nativeFetch(input,init);
 };
-await import("./app-core.js?v=1.3.6");
+await import("./app-core.js?v=1.3.7");
 await import("./isp-autosave-hotfix.js?v=1.0.1");
