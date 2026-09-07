@@ -389,12 +389,14 @@ function splitTimetableTeacherLocation(text){
   return teacher.length>=2&&/(?:樓|館|校區|教室|實驗室)/.test(location)?[teacher,location]:[value];
 }
 
+// 同時支援「四技旅館一甲」及校務系統常見的縮寫「四旅一甲」。
+const timetableClassPattern=/(?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]|(?:日|夜)?[四二五][\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]/;
+
 function arrangeTimetableCourseLines(lines){
   const unique=[...new Set(lines.map(line=>line.trim()).filter(Boolean))];
   if(!unique.length)return [];
   const joined=unique.join(" ").replace(/\s+/g," ").trim();
-  const classPattern=/(四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]/;
-  const classMatch=joined.match(classPattern);
+  const classMatch=joined.match(timetableClassPattern);
   if(!classMatch)return unique;
   const className=classMatch[0].trim();
   const before=joined.slice(0,classMatch.index).trim();
@@ -669,7 +671,7 @@ $("downloadGradeBtn").onclick=async()=>{
 // ISP 簽收表：一次解析多份整理後課表，所有資料只留在目前頁面記憶體。
 let receiptStudents=[];
 const WORD_NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-const receiptClassPattern=/(四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]/;
+const receiptClassPattern=timetableClassPattern;
 
 function maskReceiptStudentName(name){
   const chars=Array.from((name||"").trim());
@@ -691,19 +693,17 @@ function wordNodeText(node){
 }
 
 function parseReceiptCourseCell(cell){
-  const lines=wordNodeText(cell).split(/\r?\n/).map(line=>line.replace(/\s+/g," ").trim()).filter(Boolean);
-  const classIndex=lines.findIndex(line=>receiptClassPattern.test(line));
-  if(classIndex<1)return null;
-  const className=lines[classIndex].match(receiptClassPattern)?.[0]||lines[classIndex];
-  const trailing=lines.slice(classIndex+1);
-  let teacher=trailing.find(line=>line&&!/教室|樓|館|校區|實驗室/.test(line))||"";
-  if(!teacher){
-    for(const line of trailing){
-      const split=splitTimetableTeacherLocation(line);
-      if(split.length>1&&split[0]&&!/教室|樓|館|校區|實驗室/.test(split[0])){teacher=split[0];break;}
-    }
-  }
-  const courseName=lines.slice(0,classIndex).join("－").replace(/－{2,}/g,"－");
+  // Word 畫面可能自動折行，但 XML 仍是一整段；依班級位置拆出各欄資料。
+  const text=wordNodeText(cell).replace(/\u00a0/g," ").replace(/\s+/g," ").trim();
+  const classMatch=text.match(receiptClassPattern);
+  if(!classMatch||!classMatch.index)return null;
+  const className=classMatch[0];
+  const before=text.slice(0,classMatch.index).trim();
+  const after=text.slice(classMatch.index+classMatch[0].length).trim();
+  const teacher=splitTimetableTeacherLocation(after)[0]||"";
+  const courseName=before
+    .replace(/\s+(?=(?:同步遠距教學|非同步遠距教學|遠距教學|遠距授課|實體教學|實體授課)$)/,"－")
+    .trim();
   if(!courseName)return null;
   return {courseName,className,teacher};
 }
@@ -719,7 +719,7 @@ async function parseReceiptTimetableFile(file){
   const studentInfoText=paragraphTexts.find(text=>/學號/.test(text)&&/姓名/.test(text))||allText;
   const academic=allText.match(/(\d{2,3})\s*學年[\s\S]{0,30}?第?\s*([123])\s*學期/);
   const id=studentInfoText.match(/學號\s*(?:\(\s*Std\.?\s*ID\s*\))?\s*[:：]?\s*([A-Za-z]\d{7,12}|\d{7,12})/i);
-  const name=studentInfoText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([\u3400-\u9fff○〇]{2,10})/i);
+  const name=studentInfoText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([\u3400-\u9fffO○〇]{2,10})/i);
   const classInfo=studentInfoText.match(/班級\s*[:：]?\s*((?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己])/);
   const tables=[...xml.getElementsByTagNameNS(WORD_NS,"tbl")];
   if(!tables.length)throw new Error("找不到課表表格");
