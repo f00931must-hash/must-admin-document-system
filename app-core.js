@@ -316,6 +316,81 @@ document.querySelectorAll(".ai-generate-btn").forEach(button=>{
   });
 });
 
+const TEACHER_SUMMARY_STATUS_FIELDS=[
+  "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
+  "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
+  "strengthRelationship","strengthEmotion","strengthIllnessAwareness","strengthProblemSolving",
+  "strengthResourceSeeking","strengthSupportSystem","strengthFamilyInteraction","strengthFamilyEconomy",
+  "analysisSelfCare","analysisStudyWork","analysisMobility","analysisTransport","analysisCommunication",
+  "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
+  "studentNeedsAssessment","serviceEvaluationSummary"
+];
+const TEACHER_SUMMARY_STRATEGY_FIELDS=[...TEACHER_SUMMARY_STATUS_FIELDS,...AI_SERVICE_PLAN_FIELDS];
+function teacherSummarySource(fields){
+  const values=formData();
+  return fields.map(name=>{
+    const value=values[name];
+    const content=Array.isArray(value)?value.filter(Boolean).join("、"):String(value||"").trim();
+    return content?`${aiFieldLabel(name)}：${content}`:"";
+  }).filter(Boolean).join("\n");
+}
+function cleanTeacherSummary(text){
+  const raw=String(text||"").replace(/```[\s\S]*?```/g,m=>m.replace(/```[^\n]*\n?/g,"")).trim();
+  let lines=raw.split(/\n+/).map(x=>x.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean);
+  if(lines.length<2)lines=raw.split(/[。；]\s*/).map(x=>x.trim()).filter(Boolean).map(x=>/[。！？]$/.test(x)?x:x+"。");
+  return lines.slice(0,5).map((x,i)=>`${i+1}. ${x}`).join("\n");
+}
+async function requestTeacherSummary(source,kind){
+  const instruction=kind==="status"
+    ?"請依據以下 ISP 總表資料，統整任課老師需要知道的學生障礙現況。請去除重複資訊，使用正式、客觀、具體的繁體中文，列出最重要的 5 點；不可新增資料中沒有的診斷、能力、需求、原因或風險。只輸出 5 點，不要標題。"
+    :"請依據以下 ISP 總表資料，統整任課老師在課程中可採取的特教支持服務及策略。請將勾選項目視為方向，結合現況與需求轉寫成具體可執行建議，避免只是重複勾選文字；只列真正有依據且必要的 5 點，不可虛構。只輸出 5 點，不要標題。";
+  const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+    text:`${instruction}\n\n【僅限貳、現況能力摘要與特殊教育需求服務資料】\n${source}`,
+    mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
+    forceRewrite:true,documentType:"ISP"
+  })});
+  let payload={};try{payload=await response.json();}catch{}
+  if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+  const result=cleanTeacherSummary(getIspAiText(payload));
+  if(!result)throw new Error("AI 沒有回傳可用內容");
+  return result;
+}
+$("generateTeacherSummaryBtn").onclick=async()=>{
+  const panel=$("teacherIspSummaryPanel"),f=formData();
+  $("teacherSummaryDepartment").value=f.department||"";
+  $("teacherSummaryClass").value=f.studentClass||"";
+  $("teacherSummaryStudentName").value=f.studentName||"";
+  $("teacherSummaryDisability").value=f.disabilityType||f.certificateCategory||"";
+  $("teacherSummaryAdvisor").value=f.advisorName||"";
+  panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});
+  const statusSource=teacherSummarySource(TEACHER_SUMMARY_STATUS_FIELDS);
+  const strategySource=teacherSummarySource(TEACHER_SUMMARY_STRATEGY_FIELDS);
+  if(!statusSource&&!strategySource){alert("「貳、現況能力摘要與特殊教育需求服務」尚無可供統整的資料。");return;}
+  const button=$("generateTeacherSummaryBtn"),old=button.textContent;
+  button.disabled=true;button.textContent="AI 統整中…";
+  try{
+    const [status,strategies]=await Promise.all([requestTeacherSummary(statusSource,"status"),requestTeacherSummary(strategySource||statusSource,"strategies")]);
+    $("teacherSummaryStatus").value=status;$("teacherSummaryStrategies").value=strategies;
+  }catch(error){console.error(error);alert(error?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
+  finally{button.disabled=false;button.textContent=old;}
+};
+$("closeTeacherSummaryBtn").onclick=()=>$("teacherIspSummaryPanel").classList.add("hidden");
+$("downloadTeacherSummaryBtn").onclick=async()=>{
+  try{
+    if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
+    const status=$("teacherSummaryStatus").value.trim(),strategies=$("teacherSummaryStrategies").value.trim();
+    if(!status||!strategies)throw new Error("請先產生或填寫兩個摘要區塊");
+    const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.0",{cache:"no-store"});
+    if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");
+    const zip=new window.PizZip(await res.arrayBuffer());
+    const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
+    docx.render({department:$("teacherSummaryDepartment").value.trim(),studentClass:$("teacherSummaryClass").value.trim(),studentName:$("teacherSummaryStudentName").value.trim(),disabilityType:$("teacherSummaryDisability").value.trim(),advisorName:$("teacherSummaryAdvisor").value.trim().replace(/老師$/,"") ,statusText:status,strategyText:strategies});
+    const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+    const safe=($("teacherSummaryStudentName").value.trim()||"未命名").replace(/[\\/:*?"<>|]/g,"_");
+    saveAs(blob,`${safe}_任課老師ISP摘要.docx`);
+  }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
+};
+
 $("downloadBtn").onclick=async()=>{
   try{
     if (typeof window.PizZip === "undefined") throw new Error("Word 元件 PizZip 載入失敗，請重新整理頁面後再試");
