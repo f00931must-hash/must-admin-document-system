@@ -510,6 +510,9 @@ function cleanTimetableCourse(cell){
 
 function timetablePeriodFromCell(cell){
   const text=(cell.textContent||"").replace(/\u00a0/g," ").trim();
+  const firstLine=timetableCellLines(cell)[0]||"";
+  const linePeriod=firstLine.match(/^(1[0-5]|[1-9])$/);
+  if(linePeriod)return timetablePeriods.find(item=>item.period===Number(linePeriod[1]))||null;
   const leading=text.match(/^\s*(1[0-5]|[1-9])(?=\s|$|[^0-9])/);
   if(leading){
     const period=Number(leading[1]);
@@ -517,7 +520,9 @@ function timetablePeriodFromCell(cell){
     if(found)return found;
   }
   const digits=text.replace(/\D/g,"");
-  return [...timetablePeriods].sort((a,b)=>b.period-a.period).find(item=>digits.startsWith(String(item.period)))||null;
+  const twoDigit=Number(digits.slice(0,2));
+  const compactPeriod=digits.length>=10&&twoDigit>=10&&twoDigit<=15?twoDigit:Number(digits[0]);
+  return timetablePeriods.find(item=>item.period===compactPeriod)||null;
 }
 
 function validTimetableClass(value){
