@@ -481,7 +481,7 @@ function splitTimetableTeacherLocation(text){
 }
 
 // 同時支援「四技旅館一甲」及校務系統常見的縮寫「四旅一甲」。
-const timetableClassPattern=/(?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]|(?:日|夜)?[四二五][\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]/;
+const timetableClassPattern=/(?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]|技[\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]|(?:日|夜)?[四二五][\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]/;
 
 function arrangeTimetableCourseLines(lines){
   const unique=[...new Set(lines.map(line=>line.trim()).filter(Boolean))];
@@ -509,8 +509,15 @@ function cleanTimetableCourse(cell){
 }
 
 function timetablePeriodFromCell(cell){
-  const digits=(cell.textContent||"").replace(/\D/g,"");
-  return timetablePeriods.find(item=>digits.startsWith(`${item.period}${item.start}${item.end}`))||null;
+  const text=(cell.textContent||"").replace(/\u00a0/g," ").trim();
+  const leading=text.match(/^\s*(1[0-5]|[1-9])(?=\s|$|[^0-9])/);
+  if(leading){
+    const period=Number(leading[1]);
+    const found=timetablePeriods.find(item=>item.period===period);
+    if(found)return found;
+  }
+  const digits=text.replace(/\D/g,"");
+  return [...timetablePeriods].sort((a,b)=>b.period-a.period).find(item=>digits.startsWith(String(item.period)))||null;
 }
 
 function validTimetableClass(value){
