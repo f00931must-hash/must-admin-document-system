@@ -19,7 +19,7 @@
     <label>生日（民國年）<input name="birthday" type="text" inputmode="numeric" placeholder="例如：94/03/15" data-roc-date></label>
     <label class="span-2">身分證字號<input name="nationalId"></label>
     <fieldset class="span-2 compact"><legend>學制</legend><div class="checks"><label><input type="radio" name="schoolSystem" value="大學部">大學部</label><label><input type="radio" name="schoolSystem" value="研究所碩士班">研究所碩士班</label><label><input type="radio" name="schoolSystem" value="進修部">進修部</label><label><input type="radio" name="schoolSystem" value="其他">其他</label></div><label>其他<input name="schoolSystemOther"></label></fieldset>
-    <label>科系<input name="department"></label><label>班級<input name="studentClass"></label><label>導師姓名<input name="advisorName" placeholder="例如：王小明"></label><label>學號<input name="studentId"></label><label>入學時間（民國年）<input name="admissionDate" type="text" inputmode="numeric" placeholder="例如：115/09/01" data-roc-date></label><label>血型<input name="bloodType"></label>
+    <label>科系<input name="department"></label><label>班級<input name="studentClass"></label><label>導師姓名<input name="advisorName" placeholder="例如：王小明"></label><label>輔導老師姓名<input name="counselorName" placeholder="例如：王小華"></label><label>輔導老師分機<input name="counselorExtension" placeholder="例如：2255"></label><label>學號<input name="studentId"></label><label>入學時間（民國年）<input name="admissionDate" type="text" inputmode="numeric" placeholder="例如：115/09/01" data-roc-date></label><label>血型<input name="bloodType"></label>
     <label>離校時間（民國年，由輔導人員填寫）<input name="leaveDate" type="text" inputmode="numeric" placeholder="例如：119/06/30" data-roc-date></label><label class="span-2">E-mail<input name="email" type="email"></label>
   </div>
   <fieldset class="compact"><legend>入學方式</legend><div class="checks"><label><input type="radio" name="admissionMethod" value="一般入學考試">一般入學考試</label><label><input type="radio" name="admissionMethod" value="身心障礙甄試">身心障礙甄試</label><label><input type="radio" name="admissionMethod" value="推薦甄選">推薦甄選</label><label><input type="radio" name="admissionMethod" value="轉學考">轉學考</label><label><input type="radio" name="admissionMethod" value="其他">其他</label></div><label>其他說明<input name="admissionMethodOther"></label></fieldset>
@@ -164,11 +164,11 @@
 <div class="official-grid cols-2">
 <label>科系<input id="teacherSummaryDepartment"></label><label>班級<input id="teacherSummaryClass"></label>
 <label>學生姓名<input id="teacherSummaryStudentName"></label><label>障別<input id="teacherSummaryDisability"></label>
-<label>導師姓名<input id="teacherSummaryAdvisor"></label>
+<label>導師姓名<input id="teacherSummaryAdvisor"></label><label>輔導老師姓名<input id="teacherSummaryCounselor"></label><label>輔導老師分機<input id="teacherSummaryExtension"></label>
 </div>
-<label>障礙現況（預設 5 點，可在原範本段落內調整為 1 至 7 點）<textarea id="teacherSummaryStatus" rows="9"></textarea></label>
-<label>特教支持服務及策略（預設 5 點，可在原範本段落內調整為 1 至 6 點）<textarea id="teacherSummaryStrategies" rows="9"></textarea></label>
+<label>障礙現況（固定整理 5 點）<textarea id="teacherSummaryStatus" rows="9"></textarea></label>
+<label>特教支持服務及策略（固定整理 5 點）<textarea id="teacherSummaryStrategies" rows="9"></textarea></label>
 <div class="actions"><button type="button" id="downloadTeacherSummaryBtn" class="primary">下載任課老師版 Word</button><button type="button" id="closeTeacherSummaryBtn" class="secondary">關閉預覽</button></div>
 </section>
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存草稿</button><button type="button" id="downloadBtn" class="secondary">下載 ISP 總表 Word</button><button type="button" id="generateTeacherSummaryBtn" class="secondary">產生任課老師 ISP 摘要</button></div>
-</form></section></main></div><script type="module" src="app.js?v=1.5.0"></script></body></html>
+</form></section></main></div><script type="module" src="app.js?v=1.5.1"></script></body></html>
