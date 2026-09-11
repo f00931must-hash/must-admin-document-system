@@ -24,8 +24,8 @@
 </div>
 <fieldset class="official-fieldset"><legend>綜合評估－學生優弱勢能力</legend><div id="semesterStrengthGrid" class="rating-grid"></div></fieldset>
 <fieldset class="official-fieldset"><legend>現況分析</legend><div id="semesterAnalysisGrid" class="analysis-grid"></div></fieldset>
-<label class="boxed">學生需求評估<textarea name="studentNeedsAssessment" rows="5"></textarea><button type="button" class="ai-generate-btn" data-ai-target="studentNeedsAssessment" data-ai-mode="needs-assessment">✨ AI 自動產生</button></label>
-<label class="boxed">特教支持服務及策略<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="ai-generate-btn" data-ai-target="serviceEvaluationSummary" data-ai-mode="service-evaluation">✨ AI 自動產生</button></label>
+<label class="boxed">學生需求評估<textarea name="studentNeedsAssessment" rows="5"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="needs" data-ai-target="studentNeedsAssessment">✨ AI 自動產生整體評估</button></label>
+<label class="boxed">特教支持服務及策略<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="strategies" data-ai-target="serviceEvaluationSummary">✨ AI 自動產生支持策略</button></label>
 <label class="boxed">其他<textarea name="semesterOther" rows="4"></textarea></label>
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存學期 ISP</button><button type="button" id="downloadSemesterIspBtn" class="secondary">下載學期 ISP Word</button></div>
 </form></section>
@@ -194,4 +194,4 @@
 <div class="actions"><button type="button" id="downloadTeacherSummaryBtn" class="primary">下載任課老師版 Word</button><button type="button" id="closeTeacherSummaryBtn" class="secondary">關閉預覽</button></div>
 </section>
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存草稿</button><button type="button" id="downloadBtn" class="secondary">下載 ISP 總表 Word</button><button type="button" id="generateTeacherSummaryBtn" class="secondary">產生任課老師 ISP 摘要</button></div>
-</form></section></main></div><script type="module" src="app.js?v=1.6.1"></script></body></html>
+</form></section></main></div><script type="module" src="app.js?v=1.6.2"></script></body></html>

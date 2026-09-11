@@ -349,6 +349,48 @@ document.querySelectorAll(".ai-generate-btn").forEach(button=>{
   });
 });
 
+function cleanSemesterNeedsAssessment(text){
+  return String(text||"")
+    .replace(/```[^\n]*\n?/g,"")
+    .split(/\n+/)
+    .map(line=>line.replace(/^\s*(?:學生需求評估[：:]?|[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）])\s*/,"").trim())
+    .filter(Boolean)
+    .join("")
+    .trim();
+}
+function cleanSemesterStrategies(text){
+  const raw=String(text||"").replace(/```[^\n]*\n?/g,"").trim();
+  let items=raw.split(/\n+/).map(line=>line.replace(/^\s*(?:特教支持服務及策略[：:]?)\s*/,"").replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）])\s*/,"").trim()).filter(Boolean);
+  if(items.length<2)items=raw.split(/[。；]\s*/).map(item=>item.trim()).filter(Boolean).map(item=>/[。！？]$/.test(item)?item:`${item}。`);
+  return items.slice(0,6).map((item,index)=>`${index+1}. ${item}`).join("\n");
+}
+async function requestSemesterIspAi(form,kind){
+  const source=buildAiSource(kind==="needs"?"needs-assessment":"service-evaluation",form);
+  if(!source)throw new Error("目前沒有足夠的已填資料，請先填寫學生能力現況及評估欄位。");
+  const instruction=kind==="needs"
+    ?"請依據以下本學期學生能力現況與評估，撰寫一段完整的『學生需求評估』。內容應統整學生整體狀況、主要學習或適應需求，並寫出任課老師在課堂上可留意或協助的事項。使用正式、客觀、自然的繁體中文，不得使用標題、編號、項目符號或列點，不可新增資料中沒有的診斷、能力或事件。只輸出一個完整段落。"
+    :"請依據以下本學期學生能力現況、評估及需求，列出資源教室本學期將實際採取的特教支持服務及策略。每一點要結合學生的具體狀況與相對應措施，例如因學科困難而協調任課老師提供課後輔導，或持續關懷出席與課業表現。避免只重述學生狀況，也不要寫成空泛口號。使用正式、客觀、可執行的繁體中文，列出有依據且必要的 2 至 6 點，不可虛構。只輸出列點，不要標題。";
+  const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:`${instruction}\n\n【僅限目前學期 ISP 表單資料】\n${source}`,mode:"summary",section:kind==="needs"?"學期 ISP－學生需求評估":"學期 ISP－特教支持服務及策略",forceRewrite:true,documentType:"SEMESTER_ISP"})});
+  let payload={};try{payload=await response.json();}catch{}
+  if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+  const result=kind==="needs"?cleanSemesterNeedsAssessment(getIspAiText(payload)):cleanSemesterStrategies(getIspAiText(payload));
+  if(!result)throw new Error("AI 沒有回傳可用內容");
+  return result;
+}
+document.querySelectorAll(".semester-ai-generate-btn").forEach(button=>{
+  const undoButton=attachUndoButton(button);
+  button.addEventListener("click",async()=>{
+    const form=button.closest("form"),textarea=form?.querySelector(`[name="${button.dataset.aiTarget}"]`);
+    const original=textarea?.value||"",oldLabel=button.textContent;
+    button.disabled=true;button.textContent="AI 產生中…";
+    try{
+      const generated=await requestSemesterIspAi(form,button.dataset.aiKind);
+      undoButton.dataset.original=original;textarea.value=generated;textarea.dispatchEvent(new Event("input",{bubbles:true}));undoButton.disabled=false;
+    }catch(error){console.error(error);alert(error?.message||"AI 產生失敗，請稍後再試。");}
+    finally{button.disabled=false;button.textContent=oldLabel;}
+  });
+});
+
 const TEACHER_SUMMARY_STATUS_FIELDS=[
   "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
   "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
@@ -456,13 +498,15 @@ $("downloadBtn").onclick=async()=>{
 function semesterExportData(f){
   const strengthBlock=semesterStrengths.map(([name,label],index)=>`(${index+1})${ratingLine(label,f[name],["良好","尚可","待加強"])}`).join("\n");
   const analysisBlock=semesterAnalyses.map(([name,label,options],index)=>`(${index+1})${ratingLine(label,f[name],options)}`).join("\n");
-  return {...f,fillDateText:dateText(f.fillDate),strengthBlock,analysisBlock};
+  const strategyLines=String(f.serviceEvaluationSummary||"").split(/\n+/).map(line=>line.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）])\s*/,"").trim()).filter(Boolean);
+  const supportItems=strategyLines.map((text,index)=>({text:`${index+1}. ${text}`}));
+  return {...f,fillDateText:dateText(f.fillDate),strengthBlock,analysisBlock,supportItems};
 }
 $("downloadSemesterIspBtn").onclick=async()=>{
   try{
     if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
     const f=serializeForm($("semesterIspForm"));
-    const res=await fetch("./templates/semester-isp-template.docx?v=1.6.1",{cache:"no-store"});
+    const res=await fetch("./templates/semester-isp-template.docx?v=1.6.2",{cache:"no-store"});
     if(!res.ok)throw new Error("無法讀取學期 ISP Word 母版");
     const zip=new window.PizZip(await res.arrayBuffer());
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
