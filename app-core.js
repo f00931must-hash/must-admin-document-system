@@ -41,7 +41,7 @@ const semesterAnalyses=[
   ["analysisLeisure","休閒能力",["能自行參與","部份能參與","完全無法參與","本項不適用"]]
 ];
 function ratingField(name,label,options){return `<fieldset class="compact"><legend>${label}</legend><div class="checks">${options.map(option=>`<label><input type="radio" name="${name}" value="${option}">${option}</label>`).join("")}</div></fieldset>`;}
-$("semesterStrengthGrid").innerHTML=semesterStrengths.map(([name,label])=>ratingField(name,label,["良好","尚可","差"])).join("");
+$("semesterStrengthGrid").innerHTML=semesterStrengths.map(([name,label])=>ratingField(name,label,["良好","尚可","待加強"])).join("");
 $("semesterAnalysisGrid").innerHTML=semesterAnalyses.map(([name,label,options])=>ratingField(name,label,options)).join("");
 function clearSemesterIspForm(){$("semesterIspForm").reset();$("semesterDocId").value="";}
 function fillSemesterIspForm(item){clearSemesterIspForm();$("semesterDocId").value=item.id||"";for(const el of $("semesterIspForm").elements){if(!el.name)continue;const value=item.form?.[el.name];if(el.type==="radio")el.checked=value===el.value;else if(value!==undefined)el.value=el.matches("[data-roc-date]")?rocInputDate(value):value??"";}}
@@ -454,15 +454,15 @@ $("downloadBtn").onclick=async()=>{
 };
 
 function semesterExportData(f){
-  const strengthBlock=semesterStrengths.map(([name,label],index)=>`${index+1}. ${ratingLine(label,f[name],["良好","尚可","差"])}`).join("\n");
-  const analysisBlock=semesterAnalyses.map(([name,label,options],index)=>`${index+1}. ${ratingLine(label,f[name],options)}`).join("\n");
+  const strengthBlock=semesterStrengths.map(([name,label],index)=>`(${index+1})${ratingLine(label,f[name],["良好","尚可","待加強"])}`).join("\n");
+  const analysisBlock=semesterAnalyses.map(([name,label,options],index)=>`(${index+1})${ratingLine(label,f[name],options)}`).join("\n");
   return {...f,fillDateText:dateText(f.fillDate),strengthBlock,analysisBlock};
 }
 $("downloadSemesterIspBtn").onclick=async()=>{
   try{
     if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
     const f=serializeForm($("semesterIspForm"));
-    const res=await fetch("./templates/semester-isp-template.docx?v=1.6.0",{cache:"no-store"});
+    const res=await fetch("./templates/semester-isp-template.docx?v=1.6.1",{cache:"no-store"});
     if(!res.ok)throw new Error("無法讀取學期 ISP Word 母版");
     const zip=new window.PizZip(await res.arrayBuffer());
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
