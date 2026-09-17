@@ -21,3 +21,4 @@ await import("./app-core.js?v=1.6.2");
 await import("./isp-autosave-hotfix.js?v=1.0.1");
 await import("./isp-structure-enhancements.js?v=2.0.0");
 await import("./isp-ui-filters-support-v2.1.js?v=2.1.0");
+await import("./isp-receipt-combined.js?v=0.1.0");
