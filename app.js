@@ -22,4 +22,5 @@ await import("./isp-autosave-hotfix.js?v=1.0.1");
 await import("./isp-structure-enhancements.js?v=2.0.0");
 await import("./isp-ui-filters-support-v2.1.js?v=2.1.0");
 await import("./semester-isp-term-storage-fix.js?v=2.2.0");
+await import("./semester-isp-checkbox-export-fix.js?v=2.3.0");
 await import("./isp-receipt-combined.js?v=0.2.0");
