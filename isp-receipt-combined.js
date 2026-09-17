@@ -173,7 +173,7 @@ function courseDisplay(records){
     const names=byCourse.get(record.courseName);
     if(!names.includes(record.studentName))names.push(record.studentName);
   });
-  return [...byCourse.entries()].map(([course,names])=>`${names.join('\n')}－${course}`).join('\n\n');
+  return [...byCourse.entries()].map(([course,names])=>`【${course}】\n${names.map(name=>`　${name}`).join('\n')}`).join('\n\n');
 }
 const thinBorder={top:{style:'thin',color:{argb:'FF000000'}},left:{style:'thin',color:{argb:'FF000000'}},bottom:{style:'thin',color:{argb:'FF000000'}},right:{style:'thin',color:{argb:'FF000000'}}};
 function styleRange(sheet,fromRow,toRow,fromCol,toCol,{fill=null,bold=false,size=12}={}){
@@ -200,7 +200,9 @@ async function buildStudentMergeWorkbook(students,plans){
     let row=9,index=1;
     [...teachers.entries()].sort(([a],[b])=>a.localeCompare(b,'zh-Hant')).forEach(([teacher,records])=>{
       const display=courseDisplay(records),lineCount=Math.max(1,display.split('\n').length);
-      sheet.getCell(row,1).value=index++;sheet.mergeCells(row,2,row,4);sheet.getCell(row,2).value=display;sheet.getCell(row,5).value=teacher;sheet.getCell(row,6).value='';styleRange(sheet,row,row,1,6);sheet.getRow(row).height=Math.max(30,lineCount*22);row++;
+      sheet.getCell(row,1).value=index++;sheet.mergeCells(row,2,row,4);sheet.getCell(row,2).value=display;sheet.getCell(row,5).value=teacher;sheet.getCell(row,6).value='';styleRange(sheet,row,row,1,6);
+      const courseCell=sheet.getCell(row,2);courseCell.alignment={horizontal:'left',vertical:'middle',wrapText:true,indent:1};
+      sheet.getRow(row).height=Math.max(34,lineCount*21);row++;
     });
     sheet.pageSetup.printArea=`A1:F${Math.max(row-1,9)}`;
   });
