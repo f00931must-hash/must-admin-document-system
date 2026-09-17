@@ -21,6 +21,7 @@ await import("./app-core.js?v=1.6.2");
 await import("./isp-autosave-hotfix.js?v=1.0.1");
 await import("./isp-structure-enhancements.js?v=2.0.0");
 await import("./isp-ui-filters-support-v2.1.js?v=2.1.1");
+await import("./semester-isp-grade-8-fix.js?v=1.0.0");
 await import("./semester-isp-term-storage-fix.js?v=2.2.0");
 await import("./semester-isp-checkbox-export-fix.js?v=2.3.0");
 await import("./semester-isp-checkbox-value-guard.js?v=2.4.0");
