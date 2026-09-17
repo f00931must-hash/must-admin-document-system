@@ -1,7 +1,9 @@
 const $r=id=>document.getElementById(id);
 const CLASS_RE=/(?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己]|技[\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]|(?:日|夜)?[四二五][\u3400-\u9fffA-Za-z0-9]{1,8}?[一二三四五六][甲乙丙丁戊己]/;
 const LOCATION_RE=/(?:樓|館|校區|教室|實驗室|室|場|中心|遠距|線上)/;
+const WORD_NS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const clean=v=>String(v||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+let mergeStudents=[];
 
 function maskName(name){
   const chars=Array.from(clean(name));
@@ -9,7 +11,7 @@ function maskName(name){
   return `${chars[0]}○${chars.slice(2).join('')}`;
 }
 function safeSheetName(name,used){
-  const base=(clean(name)||'未填老師').replace(/[\\/*?:\[\]]/g,'_').slice(0,31)||'未填老師';
+  const base=(clean(name)||'未命名').replace(/[\\/*?:\[\]]/g,'_').slice(0,31)||'未命名';
   let out=base,n=2;
   while(used.has(out)){const s=`_${n++}`;out=`${base.slice(0,31-s.length)}${s}`;}
   used.add(out);return out;
@@ -25,7 +27,7 @@ function nodeText(node){
   walk(node);return parts.join('').replace(/\u00a0/g,' ');
 }
 function paragraphLines(cell){
-  const ps=[...cell.getElementsByTagNameNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','p')];
+  const ps=[...cell.getElementsByTagNameNS(WORD_NS,'p')];
   const lines=ps.map(p=>clean(nodeText(p))).filter(Boolean);
   if(lines.length>1)return lines;
   return nodeText(cell).split(/\n+/).map(clean).filter(Boolean);
@@ -42,7 +44,7 @@ function teacherFromAfter(lines){
 }
 function parseCourseCell(cell){
   const lines=paragraphLines(cell);
-  let classIndex=lines.findIndex(x=>CLASS_RE.test(x));
+  const classIndex=lines.findIndex(x=>CLASS_RE.test(x));
   if(classIndex>=0){
     const classMatch=lines[classIndex].match(CLASS_RE);
     const courseName=clean(lines.slice(0,classIndex).join(' '));
@@ -50,16 +52,12 @@ function parseCourseCell(cell){
     const teacher=teacherFromAfter(after);
     if(courseName&&classMatch?.[0]&&teacher)return {courseName,className:classMatch[0],teacher};
   }
-  const flat=clean(nodeText(cell));
-  const cm=flat.match(CLASS_RE);
+  const flat=clean(nodeText(cell)),cm=flat.match(CLASS_RE);
   if(!cm||!cm.index)return null;
   const courseName=clean(flat.slice(0,cm.index));
   const after=clean(flat.slice(cm.index+cm[0].length));
-  let teacher='';
-  const tm=after.match(/^([\u3400-\u9fff]{2,4})(?:老師)?/);
-  if(tm)teacher=tm[1];
-  if(!courseName||!teacher)return null;
-  return {courseName,className:cm[0],teacher};
+  const teacher=after.match(/^([\u3400-\u9fff]{2,4})(?:老師)?/)?.[1]||'';
+  return courseName&&teacher?{courseName,className:cm[0],teacher}:null;
 }
 async function parseFile(file){
   const zip=new window.PizZip(await file.arrayBuffer());
@@ -72,88 +70,143 @@ async function parseFile(file){
   const name=allText.match(/姓名\s*(?:\(\s*Name\s*\))?\s*[:：]?\s*([\u3400-\u9fffO○〇]{2,10})/i)?.[1]||'';
   const studentClass=allText.match(/班級\s*[:：]?\s*((?:四技|二技|五專|二專|進修(?:部)?|碩士|碩研|博士)[\u3400-\u9fffA-Za-z0-9()（）／/、_-]*?[甲乙丙丁戊己])/)?.[1]||'';
   if(!name)throw new Error('找不到學生姓名');
-  const tables=[...xml.getElementsByTagNameNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','tbl')];
+  const tables=[...xml.getElementsByTagNameNS(WORD_NS,'tbl')];
   if(!tables.length)throw new Error('找不到課表表格');
-  const rows=[...tables[0].getElementsByTagNameNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main','tr')];
-  const courses=[];const seen=new Set();
-  for(const row of rows.slice(1)){
-    const cells=[...row.childNodes].filter(n=>n.localName==='tc');
-    for(const cell of cells.slice(1)){
-      const c=parseCourseCell(cell);if(!c)continue;
-      const key=`${c.courseName}|${c.className}|${c.teacher}`;
-      if(seen.has(key))continue;seen.add(key);courses.push(c);
-    }
+  const rows=[...tables[0].getElementsByTagNameNS(WORD_NS,'tr')];
+  const courses=[],seen=new Set();
+  for(const row of rows.slice(1))for(const cell of [...row.childNodes].filter(n=>n.localName==='tc').slice(1)){
+    const c=parseCourseCell(cell);if(!c)continue;
+    const key=`${c.courseName}|${c.className}|${c.teacher}`;
+    if(!seen.has(key)){seen.add(key);courses.push(c);}
   }
   if(!courses.length)throw new Error('找不到可辨識的課程與任課老師');
-  return {key:id||name,name,id,studentClass,courses};
+  return {key:id||`${name}-${file.name}`,fileName:file.name,name,id,studentClass,courses};
 }
-function border(){return {top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};}
-function applyCell(cell,{bold=false,center=false,size=11}={}){
-  cell.font={name:'標楷體',size,bold};
-  cell.alignment={vertical:'middle',horizontal:center?'center':'left',wrapText:true};
-  cell.border=border();
+function currentReviewedClass(fileName,fallback){
+  const rows=[...document.querySelectorAll('#receiptReviewBody tr')];
+  const row=rows.find(r=>clean(r.cells?.[0]?.textContent)===clean(fileName));
+  return clean(row?.querySelector('.receipt-class-input')?.value)||fallback;
 }
-async function buildCombined(){
-  if(!window.ExcelJS||!window.PizZip||!window.saveAs)throw new Error('Excel 或 Word 讀取元件尚未載入，請重新整理後再試');
+async function loadMergeStudents(){
+  if(!window.PizZip)throw new Error('Word 讀取元件尚未載入，請重新整理後再試');
   const files=[...($r('receiptFiles')?.files||[])];
-  if(!files.length)throw new Error('請先選取整理後的 Word 課表');
-  const academicYear=clean($r('receiptAcademicYear')?.value);
-  const semester=clean($r('receiptSemester')?.value);
-  if(!academicYear)throw new Error('請先填寫學年度');
-  const parsed=[];const errors=[];
+  if(!files.length)throw new Error('請先匯入整理後的 Word 課表');
+  const parsed=[],errors=[];
   for(const file of files){try{parsed.push(await parseFile(file));}catch(e){errors.push(`${file.name}：${e.message}`);}}
   if(!parsed.length)throw new Error(errors.join('；')||'沒有可用的課表');
-  if(errors.length&&!confirm(`有 ${errors.length} 份課表無法辨識：\n${errors.join('\n')}\n\n是否先用其餘資料產生綜合版？`))return;
-  const byTeacher=new Map();
-  for(const student of parsed){
-    for(const course of student.courses){
-      if(!byTeacher.has(course.teacher))byTeacher.set(course.teacher,new Map());
-      const byCourse=byTeacher.get(course.teacher);
-      const courseKey=`${course.courseName}|${course.className}`;
-      if(!byCourse.has(courseKey))byCourse.set(courseKey,{courseName:course.courseName,courseClass:course.className,students:new Map()});
-      const group=byCourse.get(courseKey);
-      group.students.set(student.key,{name:student.name,studentClass:student.studentClass||course.className});
-    }
-  }
-  const wb=new window.ExcelJS.Workbook();wb.creator='明新科技大學資源教室';
-  const used=new Set();
-  [...byTeacher.entries()].sort((a,b)=>a[0].localeCompare(b[0],'zh-Hant')).forEach(([teacher,courseMap])=>{
-    const ws=wb.addWorksheet(safeSheetName(teacher,used),{pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:1,margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2}}});
-    ws.mergeCells('A1:E1');ws.getCell('A1').value=`${academicYear}學年度第${semester}學期 ISP 任課教師簽收單（綜合版）`;applyCell(ws.getCell('A1'),{bold:true,center:true,size:14});ws.getRow(1).height=26;
-    ws.mergeCells('A2:B2');ws.getCell('A2').value=`任課教師：${teacher}`;applyCell(ws.getCell('A2'),{bold:true,size:12});
-    ws.mergeCells('C2:E2');ws.getCell('C2').value='同一位老師之不同課程分區列示，整張僅需簽收一次';applyCell(ws.getCell('C2'),{size:10});
-    const headers=['序號','課程名稱／開課班級','學生班級','學生','備註'];
-    const hr=ws.addRow(headers);hr.eachCell(c=>applyCell(c,{bold:true,center:true}));
-    let no=1;
-    for(const group of [...courseMap.values()].sort((a,b)=>a.courseName.localeCompare(b.courseName,'zh-Hant'))){
-      const students=[...group.students.values()].sort((a,b)=>`${a.studentClass}${a.name}`.localeCompare(`${b.studentClass}${b.name}`,'zh-Hant'));
-      const start=ws.rowCount+1;
-      students.forEach((s,idx)=>{
-        const row=ws.addRow([no++,idx===0?`${group.courseName}\n（${group.courseClass}）`:'',s.studentClass||'',maskName(s.name),'']);
-        row.eachCell(c=>applyCell(c,{center:[1,3,4,5].includes(c.col)}));
-      });
-      const end=ws.rowCount;
-      if(end>start)ws.mergeCells(start,2,end,2);
-      ws.getCell(start,2).alignment={vertical:'middle',horizontal:'left',wrapText:true};
-    }
-    const signRow=ws.rowCount+2;ws.mergeCells(signRow,1,signRow,5);ws.getCell(signRow,1).value='任課教師簽名：____________________________    日期：_______年_______月_______日';applyCell(ws.getCell(signRow,1),{bold:true,size:12});ws.getRow(signRow).height=34;
-    ws.columns=[{width:7},{width:30},{width:16},{width:14},{width:16}];
-    ws.views=[{state:'frozen',ySplit:3}];
-    ws.headerFooter.oddFooter='第 &P / &N 頁';
-    ws.pageSetup.printArea=`A1:E${signRow}`;
+  parsed.forEach(s=>s.studentClass=currentReviewedClass(s.fileName,s.studentClass));
+  if(parsed.some(s=>!s.studentClass))throw new Error('仍有學生缺少班級，請先在上方確認班級');
+  if(errors.length)alert(`有 ${errors.length} 份課表無法加入共同老師整理：\n${errors.join('\n')}`);
+  mergeStudents=parsed;
+  return parsed;
+}
+function sharedTeachers(students){
+  const map=new Map();
+  students.forEach(student=>{
+    const own=new Map();
+    student.courses.forEach(course=>{
+      if(!course.teacher)return;
+      if(!own.has(course.teacher))own.set(course.teacher,[]);
+      if(!own.get(course.teacher).some(x=>x.courseName===course.courseName))own.get(course.teacher).push(course);
+    });
+    own.forEach((courses,teacher)=>{
+      if(!map.has(teacher))map.set(teacher,[]);
+      map.get(teacher).push({student,courses});
+    });
   });
-  const buffer=await wb.xlsx.writeBuffer();
-  window.saveAs(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`${academicYear}-${semester}_ISP簽收單_綜合版.xlsx`);
+  return [...map.entries()].filter(([,items])=>items.length>=2).sort(([a],[b])=>a.localeCompare(b,'zh-Hant'));
 }
-
+function escHtml(v){return String(v??'').replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));}
+function renderMergePanel(students){
+  const panel=$r('sharedTeacherMergePanel'),list=$r('sharedTeacherMergeList');
+  const shared=sharedTeachers(students);list.innerHTML='';
+  if(!shared.length){list.innerHTML='<div class="timetable-notice">目前沒有找到 2 位以上學生共同的任課老師，不需要合併。</div>';panel.classList.remove('hidden');return;}
+  shared.forEach(([teacher,items])=>{
+    const card=document.createElement('div');card.className='official-fieldset shared-teacher-card';card.dataset.teacher=teacher;
+    const options=items.map(({student})=>`<option value="${escHtml(student.key)}">${escHtml(maskName(student.name))}｜${escHtml(student.studentClass)}</option>`).join('');
+    card.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><strong>${escHtml(teacher)}老師｜${items.length} 位學生有共同課程</strong><label>由哪位學生送<select class="merge-carrier"><option value="">尚未設定</option>${options}</select></label></div><div class="merge-student-options" style="margin-top:10px"></div>`;
+    const box=card.querySelector('.merge-student-options');
+    items.forEach(({student,courses})=>{
+      const label=document.createElement('label');label.style.display='block';label.style.margin='7px 0';
+      label.innerHTML=`<input type="checkbox" class="merge-member" value="${escHtml(student.key)}"> <strong>${escHtml(maskName(student.name))}</strong>（${escHtml(student.studentClass)}）－ ${escHtml(courses.map(c=>c.courseName).join('、'))}`;
+      box.appendChild(label);
+    });
+    const carrier=card.querySelector('.merge-carrier');
+    carrier.addEventListener('change',()=>{if(!carrier.value)return;const cb=[...card.querySelectorAll('.merge-member')].find(x=>x.value===carrier.value);if(cb)cb.checked=true;});
+    list.appendChild(card);
+  });
+  panel.classList.remove('hidden');panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function collectPlans(){
+  const plans=[];
+  document.querySelectorAll('.shared-teacher-card').forEach(card=>{
+    const teacher=card.dataset.teacher,carrier=card.querySelector('.merge-carrier')?.value||'';
+    const members=[...card.querySelectorAll('.merge-member:checked')].map(x=>x.value);
+    if(!carrier&&!members.length)return;
+    if(!carrier)throw new Error(`${teacher}老師：請先選擇由哪位學生送`);
+    if(!members.includes(carrier))members.push(carrier);
+    if(members.length<2)throw new Error(`${teacher}老師：至少要選 2 位學生才需要合併`);
+    plans.push({teacher,carrier,members:new Set(members)});
+  });
+  return plans;
+}
+function mergedStudentRows(students,plans){
+  const planByTeacher=new Map(plans.map(p=>[p.teacher,p]));
+  const result=new Map(students.map(s=>[s.key,{student:s,teachers:new Map()}]));
+  students.forEach(student=>student.courses.forEach(course=>{
+    const plan=planByTeacher.get(course.teacher);
+    if(plan&&plan.members.has(student.key)){
+      const target=result.get(plan.carrier),arr=target.teachers.get(course.teacher)||[];
+      const label=`${maskName(student.name)}｜${course.courseName}`;
+      if(!arr.includes(label))arr.push(label);target.teachers.set(course.teacher,arr);
+    }else{
+      const target=result.get(student.key),arr=target.teachers.get(course.teacher)||[];
+      if(!arr.includes(course.courseName))arr.push(course.courseName);target.teachers.set(course.teacher,arr);
+    }
+  }));
+  return [...result.values()].filter(x=>x.teachers.size>0);
+}
+const thinBorder={top:{style:'thin',color:{argb:'FF000000'}},left:{style:'thin',color:{argb:'FF000000'}},bottom:{style:'thin',color:{argb:'FF000000'}},right:{style:'thin',color:{argb:'FF000000'}}};
+function styleRange(sheet,fromRow,toRow,fromCol,toCol,{fill=null,bold=false,size=12}={}){
+  for(let row=fromRow;row<=toRow;row++)for(let col=fromCol;col<=toCol;col++){
+    const cell=sheet.getCell(row,col);cell.font={name:'標楷體',size,bold};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border=thinBorder;if(fill)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill}};
+  }
+}
+function setupSheet(sheet){sheet.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.35,right:0.35,top:0.45,bottom:0.45,header:0.2,footer:0.2}};sheet.properties.defaultRowHeight=24;sheet.views=[{showGridLines:false}];}
+async function buildStudentMergeWorkbook(students,plans){
+  if(!window.ExcelJS||!window.saveAs)throw new Error('Excel 元件尚未載入，請重新整理後再試');
+  const academicYear=clean($r('receiptAcademicYear')?.value),semester=clean($r('receiptSemester')?.value);
+  if(!academicYear)throw new Error('請先填寫學年度');
+  const rows=mergedStudentRows(students,plans),workbook=new window.ExcelJS.Workbook();workbook.creator='明新科技大學資源教室';const used=new Set();
+  rows.sort((a,b)=>a.student.name.localeCompare(b.student.name,'zh-Hant')).forEach(({student,teachers})=>{
+    const masked=maskName(student.name),sheet=workbook.addWorksheet(safeSheetName(masked,used));setupSheet(sheet);
+    sheet.columns=[{width:8},{width:18},{width:18},{width:18},{width:18},{width:18}];
+    sheet.mergeCells('A1:B2');sheet.mergeCells('C1:C2');sheet.mergeCells('D1:F2');
+    sheet.getCell('A1').value=`${academicYear}學年度`;sheet.getCell('C1').value=semester==='3'?'暑期':`第${semester}學期`;sheet.getCell('D1').value='個別化支持計畫（ISP）簽收單';
+    styleRange(sheet,1,2,1,6,{bold:true,size:14});sheet.getRow(1).height=30;sheet.getRow(2).height=30;
+    sheet.getCell('A4').value='班級：';sheet.getCell('B4').value=student.studentClass;sheet.getCell('C4').value='學生：';sheet.getCell('D4').value=masked;
+    for(let col=1;col<=4;col++){const cell=sheet.getCell(4,col);cell.font={name:'標楷體',size:12,bold:true};cell.alignment={horizontal:'center',vertical:'middle'};}
+    sheet.mergeCells('A7:A8');sheet.mergeCells('B7:D8');sheet.mergeCells('E7:E8');sheet.mergeCells('F7:F8');
+    sheet.getCell('A7').value='序號';sheet.getCell('B7').value='課程';sheet.getCell('E7').value='授課教師';sheet.getCell('F7').value='簽收';styleRange(sheet,7,8,1,6,{fill:'FFD9EAF7',bold:true});
+    let row=9,index=1;
+    [...teachers.entries()].sort(([a],[b])=>a.localeCompare(b,'zh-Hant')).forEach(([teacher,courses])=>{
+      sheet.getCell(row,1).value=index++;sheet.mergeCells(row,2,row,4);sheet.getCell(row,2).value=courses.join('\n');sheet.getCell(row,5).value=teacher;sheet.getCell(row,6).value='';styleRange(sheet,row,row,1,6);sheet.getRow(row).height=Math.max(30,courses.length*22);row++;
+    });
+    sheet.pageSetup.printArea=`A1:F${Math.max(row-1,9)}`;
+  });
+  const buffer=await workbook.xlsx.writeBuffer();
+  window.saveAs(new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`${academicYear}-${semester}_ISP簽收單_學生版共同老師合併.xlsx`);
+}
 function install(){
-  const studentBtn=$r('downloadStudentReceiptBtn');
-  if(!studentBtn||$r('downloadCombinedReceiptBtn'))return;
-  const button=document.createElement('button');button.type='button';button.id='downloadCombinedReceiptBtn';button.className='primary';button.textContent='下載綜合版 Excel（試用）';
-  studentBtn.insertAdjacentElement('afterend',button);
-  const hint=document.createElement('div');hint.className='timetable-notice';hint.style.marginTop='10px';hint.textContent='綜合版：同一位任課老師只建立一張工作表；老師若有多門課，會在同一張內依課程分區列出學生，最後只簽收一次。';
-  button.parentElement?.insertAdjacentElement('afterend',hint);
-  button.addEventListener('click',async()=>{const old=button.textContent;button.disabled=true;button.textContent='產生綜合版中…';try{await buildCombined();}catch(e){console.error(e);alert(e.message||'綜合版產生失敗');}finally{button.disabled=false;button.textContent=old;}});
+  const studentBtn=$r('downloadStudentReceiptBtn');if(!studentBtn)return;
+  const old=$r('downloadCombinedReceiptBtn');if(old)old.remove();
+  document.querySelectorAll('.combined-receipt-old-hint').forEach(x=>x.remove());
+  if($r('setupSharedTeacherMergeBtn'))return;
+  const button=document.createElement('button');button.type='button';button.id='setupSharedTeacherMergeBtn';button.className='primary';button.textContent='學生版－共同老師合併';studentBtn.insertAdjacentElement('afterend',button);
+  const panel=document.createElement('div');panel.id='sharedTeacherMergePanel';panel.className='editor-card hidden';panel.style.marginTop='14px';panel.innerHTML='<h3>共同老師手動合併</h3><div class="timetable-notice">以「學生為主」簽收單為基底。只有你手動勾選的學生才會合併；請指定其中一位學生代送。同一老師的不同課程會保留，其他未選課程維持原狀。</div><div id="sharedTeacherMergeList"></div><div class="actions"><button type="button" id="downloadSharedTeacherMergeBtn" class="primary">套用合併並下載 Excel</button><button type="button" id="clearSharedTeacherMergeBtn" class="secondary">清除合併設定</button></div>';
+  $r('receiptReview')?.appendChild(panel);
+  button.addEventListener('click',async()=>{const oldText=button.textContent;button.disabled=true;button.textContent='分析共同老師中…';try{renderMergePanel(await loadMergeStudents());}catch(e){alert(e.message||'共同老師分析失敗');}finally{button.disabled=false;button.textContent=oldText;}});
+  panel.querySelector('#clearSharedTeacherMergeBtn').onclick=()=>{panel.querySelectorAll('.merge-member').forEach(x=>x.checked=false);panel.querySelectorAll('.merge-carrier').forEach(x=>x.value='');};
+  panel.querySelector('#downloadSharedTeacherMergeBtn').onclick=async()=>{const btn=panel.querySelector('#downloadSharedTeacherMergeBtn'),oldText=btn.textContent;btn.disabled=true;btn.textContent='產生中…';try{if(!mergeStudents.length)await loadMergeStudents();await buildStudentMergeWorkbook(mergeStudents,collectPlans());}catch(e){console.error(e);alert(e.message||'合併版產生失敗');}finally{btn.disabled=false;btn.textContent=oldText;}};
 }
-install();
-new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
+install();new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});
