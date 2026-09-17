@@ -11,3 +11,4 @@ window.fetch=(input,init)=>{
 };
 await import("./app-core.js?v=1.6.2");
 await import("./isp-autosave-hotfix.js?v=1.0.1");
+await import("./isp-structure-enhancements.js?v=2.0.0");
