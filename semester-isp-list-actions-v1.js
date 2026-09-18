@@ -157,7 +157,8 @@ function matchingBaseIsp(form){
   })||baseIspRecords.find(r=>normName(r.studentName||r.form?.studentName)===name)||null;
 }
 function syncAcademicYearFromGrade(form){
-  const grade=norm(form.elements.studentGrade?.value),n=gradeNumber[grade];
+  const grade=norm(form.elements.studentGrade?.value)||norm(form.elements.studentClass?.value).match(/[一二三四五六七八]|研[一二]/)?.[0]||"";
+  const n=gradeNumber[grade];
   if(!n)return;
   const base=matchingBaseIsp(form),admission=admissionYearFromDate(base?.form?.admissionDate);
   if(!admission)return;
@@ -195,4 +196,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.1.0 loaded");
+console.log("Semester ISP list actions/copy v1.1.1 loaded");
