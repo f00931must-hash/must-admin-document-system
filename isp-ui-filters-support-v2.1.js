@@ -52,7 +52,7 @@ ${fieldset("支持服務調整評估","supportAdjustment",["現有支持適切�
 }
 
 function ensureClassHints(){
-  document.querySelectorAll('#ispForm input[name="studentClass"], #semesterIspForm input[name="studentClass"]').forEach(input=>{
+  document.querySelectorAll('#ispForm input[name="studentClass"]').forEach(input=>{
     const label=input.closest("label");if(!label||label.querySelector(".student-class-example"))return;
     const hint=document.createElement("small");hint.className="student-class-example";hint.textContent="例如：機械一甲";hint.style.cssText="display:block;margin-top:6px;color:#8a94a6;font-size:12px;font-weight:400";label.appendChild(hint);
   });
