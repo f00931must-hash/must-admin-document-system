@@ -6,7 +6,7 @@ const app=getApp(),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);
 const norm=v=>String(v??"").trim();
 const normName=v=>norm(v).replace(/[\s　]+/g,"");
-let ownerEmail="",semesterDocs=[],installed=false,suppressSwitch=false;
+let ownerEmail="",semesterDocs=[],baseIspDocs=[],installed=false,suppressSwitch=false;
 
 const gradeNo={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"研一":1,"研二":2};
 const supportConfig={
@@ -52,11 +52,34 @@ async function refreshDocs(){
   if(!ownerEmail)return;
   try{
     const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail)));
-    semesterDocs=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.type==="SEMESTER_ISP");
+    const all=snap.docs.map(x=>({id:x.id,...x.data()}));
+    semesterDocs=all.filter(x=>x.type==="SEMESTER_ISP");
+    baseIspDocs=all.filter(x=>!x.type||x.type==="ISP");
   }catch(error){console.warn("Semester ISP term load failed",error);}
 }
 function docGrade(d){return norm(d?.form?.studentGrade)||norm(d?.form?.studentClass).match(/[一二三四五六七]|研[一二]/)?.[0]||"";}
 function stamp(d){return d?.updatedAt?.seconds||d?.createdAt?.seconds||0;}
+function admissionYearFromBase(name,department){
+  const n=normName(name),dept=norm(department).replace(/系$/u,"");
+  const candidates=baseIspDocs.filter(d=>normName(d.studentName||d.form?.studentName)===n);
+  const hit=candidates.find(d=>norm(d.form?.department).replace(/系$/u,"")===dept)||candidates[0];
+  const raw=norm(hit?.form?.admissionDate);
+  const m=raw.match(/^(?:民國\s*)?(\d{2,4})/);
+  if(!m)return 0;
+  let y=Number(m[1]);if(y>=1912)y-=1911;
+  return y>0?y:0;
+}
+function academicYearForGrade(name,department,grade){
+  const admission=admissionYearFromBase(name,department),n=gradeNo[grade];
+  if(!admission||!n||/^研/.test(grade))return "";
+  return String(admission+n-1);
+}
+function syncAcademicYear(form){
+  const name=norm(form?.elements?.studentName?.value),department=norm(form?.elements?.department?.value),grade=norm(form?.elements?.studentGrade?.value);
+  const expected=academicYearForGrade(name,department,grade);
+  if(expected&&form?.elements?.academicYear)form.elements.academicYear.value=expected;
+  return expected;
+}
 function findTermDoc(name,department,grade,semester){
   return semesterDocs
     .filter(d=>normName(d.studentName)===normName(name)&&norm(d.form?.department)===norm(department)&&docGrade(d)===grade&&String(d.form?.semester||"")===String(semester||""))
@@ -74,6 +97,7 @@ function setForm(form,data,id=""){
       else if(el.type==="radio")el.checked=value===el.value;
       else if(value!==undefined&&value!==null)el.value=value;
     }
+    syncAcademicYear(form);
   }finally{setTimeout(()=>{suppressSwitch=false;},0);}
 }
 function adjustedClass(value,targetGrade){
@@ -156,6 +180,7 @@ function semesterExportDataV2(f){
 async function downloadSemesterWord(){
   const form=$("semesterIspForm");if(!form)return;
   if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
+  syncAcademicYear(form);
   const f=serialize(form);
   const response=await fetch("./templates/semester-isp-template-v2.docx?v=2.2.0",{cache:"no-store"});
   if(!response.ok)throw new Error("無法讀取新版學期 ISP Word 母版");
@@ -172,6 +197,9 @@ function install(){
   installed=true;ensureHint();
   form.elements.studentGrade.addEventListener("change",switchTerm);
   form.elements.semester.addEventListener("change",switchTerm);
+  form.elements.studentName?.addEventListener("input",()=>syncAcademicYear(form));
+  form.elements.department?.addEventListener("input",()=>syncAcademicYear(form));
+  form.addEventListener("submit",()=>syncAcademicYear(form),true);
   form.addEventListener("submit",()=>{setTimeout(refreshDocs,1200);setTimeout(refreshDocs,3000);});
   document.addEventListener("click",event=>{
     if(event.target.closest?.(".open-semester-doc"))setTimeout(restoreCurrentCheckboxes,80);
@@ -187,4 +215,4 @@ function install(){
 const observer=new MutationObserver(()=>install());observer.observe(document.documentElement,{childList:true,subtree:true});
 onAuthStateChanged(auth,async user=>{ownerEmail=await resolveOwner(user);if(user){await refreshDocs();install();setTimeout(restoreCurrentCheckboxes,100);}});
 install();
-console.log("Semester ISP term storage/export fix v2.2.0 loaded");
+console.log("Semester ISP term storage/export fix v2.2.1 loaded");
