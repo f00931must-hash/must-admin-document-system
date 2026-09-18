@@ -6,7 +6,7 @@ const app=getApp(),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);
 const norm=v=>String(v??"").trim();
 const normName=v=>norm(v).replace(/[\s　]+/g,"");
-let ownerEmail="",role="",records=[];
+let ownerEmail="",role="",records=[],baseIspRecords=[];
 
 function rocToday(){
   const d=new Date();
@@ -36,7 +36,9 @@ async function refreshRecords(){
   if(!ownerEmail)await resolveAccess();
   if(!ownerEmail)return;
   const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail)));
-  records=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.type==="SEMESTER_ISP");
+  const all=snap.docs.map(x=>({id:x.id,...x.data()}));
+  records=all.filter(x=>x.type==="SEMESTER_ISP");
+  baseIspRecords=all.filter(x=>!x.type||x.type==="ISP");
 }
 function recordForNode(node){
   const strong=node.querySelector("strong")?.textContent||"";
@@ -137,14 +139,50 @@ function addHint(input,text,key){
   small.style.cssText="display:block;margin-top:6px;color:#8a94a6;font-size:12px;font-weight:400";
   label.appendChild(small);
 }
+const gradeNumber={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8};
+function deptKey(v){return norm(v).replace(/系$/u,"");}
+function admissionYearFromDate(value){
+  const m=norm(value).match(/^(?:民國\s*)?(\d{2,4})/);
+  if(!m)return 0;
+  let y=Number(m[1]);if(y>=1912)y-=1911;
+  return y>0?y:0;
+}
+function matchingBaseIsp(form){
+  const name=normName(form.elements.studentName?.value);
+  const dept=deptKey(form.elements.department?.value);
+  if(!name)return null;
+  return baseIspRecords.find(r=>{
+    const f=r.form||{};
+    return normName(r.studentName||f.studentName)===name&&(!dept||deptKey(f.department)===dept);
+  })||baseIspRecords.find(r=>normName(r.studentName||r.form?.studentName)===name)||null;
+}
+function syncAcademicYearFromGrade(form){
+  const grade=norm(form.elements.studentGrade?.value),n=gradeNumber[grade];
+  if(!n)return;
+  const base=matchingBaseIsp(form),admission=admissionYearFromDate(base?.form?.admissionDate);
+  if(!admission)return;
+  const expected=String(admission+n-1);
+  if(form.elements.academicYear)form.elements.academicYear.value=expected;
+}
+function bindAcademicYearSync(form){
+  if(form.dataset.academicYearSync==="1")return;
+  form.dataset.academicYearSync="1";
+  ["studentName","department","studentGrade"].forEach(name=>{
+    form.elements[name]?.addEventListener(name==="studentGrade"?"change":"input",()=>syncAcademicYearFromGrade(form));
+  });
+}
 function enhanceEditor(){
   const form=$("semesterIspForm");if(!form)return;
   const year=form.elements.academicYear,dept=form.elements.department,studentClass=form.elements.studentClass;
-  setLabelText(year,"入學學年度");
+  setLabelText(year,"學年度");
   setLabelText(dept,"科系");
   setLabelText(studentClass,"班級");
   addHint(dept,"不用輸入「系」字，例如：旅廚","department");
   addHint(studentClass,"只填班級，不要輸入系別，例如：一甲","studentClass");
+  const oldExample=form.querySelector(".student-class-example");if(oldExample)oldExample.remove();
+  addHint(year,"會依入學學年度＋目前年級自動帶入，例如：113入學、三年級為115學年度","academicYear");
+  bindAcademicYearSync(form);
+  syncAcademicYearFromGrade(form);
 }
 async function apply(){
   await resolveAccess();await refreshRecords();enhanceEditor();enhanceList();
@@ -157,4 +195,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.0.0 loaded");
+console.log("Semester ISP list actions/copy v1.1.0 loaded");
