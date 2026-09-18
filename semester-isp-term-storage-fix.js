@@ -75,7 +75,8 @@ function academicYearForGrade(name,department,grade){
   return String(admission+n-1);
 }
 function syncAcademicYear(form){
-  const name=norm(form?.elements?.studentName?.value),department=norm(form?.elements?.department?.value),grade=norm(form?.elements?.studentGrade?.value);
+  const name=norm(form?.elements?.studentName?.value),department=norm(form?.elements?.department?.value);
+  const grade=norm(form?.elements?.studentGrade?.value)||norm(form?.elements?.studentClass?.value).match(/[一二三四五六七八]|研[一二]/)?.[0]||"";
   const expected=academicYearForGrade(name,department,grade);
   if(expected&&form?.elements?.academicYear)form.elements.academicYear.value=expected;
   return expected;
@@ -215,4 +216,4 @@ function install(){
 const observer=new MutationObserver(()=>install());observer.observe(document.documentElement,{childList:true,subtree:true});
 onAuthStateChanged(auth,async user=>{ownerEmail=await resolveOwner(user);if(user){await refreshDocs();install();setTimeout(restoreCurrentCheckboxes,100);}});
 install();
-console.log("Semester ISP term storage/export fix v2.2.1 loaded");
+console.log("Semester ISP term storage/export fix v2.2.2 loaded");
