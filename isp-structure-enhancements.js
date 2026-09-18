@@ -34,7 +34,9 @@ function admissionYearForSemester(name,department){
 }
 function syncSemesterAcademicYear(form){
   if(!form)return "";
-  const f=serialize(form),grade=norm(f.studentGrade),n=gradeOrder[grade];
+  const f=serialize(form);
+  const grade=norm(f.studentGrade)||extractGrade(f.studentClass);
+  const n=gradeOrder[grade];
   if(!n||/^研/.test(grade))return "";
   const admission=admissionYearForSemester(f.studentName,f.department);
   if(!admission)return "";
@@ -78,4 +80,4 @@ document.addEventListener("click",async event=>{const button=event.target.closes
 const totalObserver=$("docList")?new MutationObserver(()=>setTimeout(enhanceTotalList,0)):null;totalObserver?.observe($("docList"),{childList:true});const semesterObserver=$("semesterIspList")?new MutationObserver(()=>setTimeout(enhanceSemesterList,0)):null;semesterObserver?.observe($("semesterIspList"),{childList:true});
 ensureTotalSortOptions();ensureSemesterFields();ensureSemesterSort();
 onAuthStateChanged(auth,async user=>{ownerEmail=await resolveOwner(user);if(user)await refreshDocs();});
-console.log("ISP structure enhancements v2.0.1 loaded");
+console.log("ISP structure enhancements v2.0.2 loaded");
