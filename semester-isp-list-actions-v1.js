@@ -187,7 +187,7 @@ function enhanceEditor(){
   addHint(dept,"不用輸入「系」字，例如：旅廚","department");
   addHint(studentClass,"只填班級，不要輸入系別，例如：一甲","studentClass");
   const oldExample=form.querySelector(".student-class-example");if(oldExample)oldExample.remove();
-  addHint(year,"此欄是本學期的「學年度」，不是入學學年度；系統會依入學年＋目前年級換算，例如：113入學、三年級＝115學年度","academicYear");
+  addHint(year,"ISP學年度（非入學）","academicYear");
   bindAcademicYearSync(form);
   syncAcademicYearFromGrade(form);
 }
@@ -202,4 +202,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.1.2 loaded");
+console.log("Semester ISP list actions/copy v1.1.3 loaded");
