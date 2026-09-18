@@ -159,8 +159,14 @@ function matchingBaseIsp(form){
 function syncAcademicYearFromGrade(form){
   const grade=norm(form.elements.studentGrade?.value)||norm(form.elements.studentClass?.value).match(/[一二三四五六七八]|研[一二]/)?.[0]||"";
   const n=gradeNumber[grade];
-  if(!n)return;
-  const base=matchingBaseIsp(form),admission=admissionYearFromDate(base?.form?.admissionDate);
+  if(!n||/^研/.test(grade))return;
+  const base=matchingBaseIsp(form);
+  let admission=admissionYearFromDate(base?.form?.admissionDate);
+  const current=Number(norm(form.elements.academicYear?.value));
+  if(!admission&&current&&n>1){
+    // 舊學期 ISP 曾把「入學學年度」直接放在學年度欄，僅在尚未找到新生 ISP 時作相容推定。
+    admission=current;
+  }
   if(!admission)return;
   const expected=String(admission+n-1);
   if(form.elements.academicYear)form.elements.academicYear.value=expected;
@@ -181,7 +187,7 @@ function enhanceEditor(){
   addHint(dept,"不用輸入「系」字，例如：旅廚","department");
   addHint(studentClass,"只填班級，不要輸入系別，例如：一甲","studentClass");
   const oldExample=form.querySelector(".student-class-example");if(oldExample)oldExample.remove();
-  addHint(year,"會依入學學年度＋目前年級自動帶入，例如：113入學、三年級為115學年度","academicYear");
+  addHint(year,"此欄是本學期的「學年度」，不是入學學年度；系統會依入學年＋目前年級換算，例如：113入學、三年級＝115學年度","academicYear");
   bindAcademicYearSync(form);
   syncAcademicYearFromGrade(form);
 }
@@ -196,4 +202,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.1.1 loaded");
+console.log("Semester ISP list actions/copy v1.1.2 loaded");
