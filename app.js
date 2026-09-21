@@ -26,4 +26,5 @@ await import("./semester-isp-list-actions-v1.js?v=1.1.4");
 await import("./semester-isp-term-storage-fix.js?v=2.2.3");
 await import("./semester-isp-checkbox-export-fix.js?v=2.3.0");
 await import("./semester-isp-checkbox-value-guard.js?v=2.4.0");
+await import("./semester-teacher-summary.js?v=1.0.0");
 await import("./isp-receipt-combined.js?v=0.2.0");
