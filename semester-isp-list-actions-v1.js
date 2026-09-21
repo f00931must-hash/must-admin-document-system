@@ -139,45 +139,6 @@ function addHint(input,text,key){
   small.style.cssText="display:block;margin-top:6px;color:#8a94a6;font-size:12px;font-weight:400";
   label.appendChild(small);
 }
-const gradeNumber={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"七":7,"八":8};
-function deptKey(v){return norm(v).replace(/系$/u,"");}
-function admissionYearFromDate(value){
-  const m=norm(value).match(/^(?:民國\s*)?(\d{2,4})/);
-  if(!m)return 0;
-  let y=Number(m[1]);if(y>=1912)y-=1911;
-  return y>0?y:0;
-}
-function matchingBaseIsp(form){
-  const name=normName(form.elements.studentName?.value);
-  const dept=deptKey(form.elements.department?.value);
-  if(!name)return null;
-  return baseIspRecords.find(r=>{
-    const f=r.form||{};
-    return normName(r.studentName||f.studentName)===name&&(!dept||deptKey(f.department)===dept);
-  })||baseIspRecords.find(r=>normName(r.studentName||r.form?.studentName)===name)||null;
-}
-function syncAcademicYearFromGrade(form){
-  const grade=norm(form.elements.studentGrade?.value)||norm(form.elements.studentClass?.value).match(/[一二三四五六七八]|研[一二]/)?.[0]||"";
-  const n=gradeNumber[grade];
-  if(!n||/^研/.test(grade))return;
-  const base=matchingBaseIsp(form);
-  let admission=admissionYearFromDate(base?.form?.admissionDate);
-  const current=Number(norm(form.elements.academicYear?.value));
-  if(!admission&&current&&n>1){
-    // 舊學期 ISP 曾把「入學學年度」直接放在學年度欄，僅在尚未找到新生 ISP 時作相容推定。
-    admission=current;
-  }
-  if(!admission)return;
-  const expected=String(admission+n-1);
-  if(form.elements.academicYear)form.elements.academicYear.value=expected;
-}
-function bindAcademicYearSync(form){
-  if(form.dataset.academicYearSync==="1")return;
-  form.dataset.academicYearSync="1";
-  ["studentName","department","studentGrade"].forEach(name=>{
-    form.elements[name]?.addEventListener(name==="studentGrade"?"change":"input",()=>syncAcademicYearFromGrade(form));
-  });
-}
 function enhanceEditor(){
   const form=$("semesterIspForm");if(!form)return;
   const year=form.elements.academicYear,dept=form.elements.department,studentClass=form.elements.studentClass;
@@ -188,8 +149,6 @@ function enhanceEditor(){
   addHint(studentClass,"只填班級，不要輸入系別，例如：一甲","studentClass");
   const oldExample=form.querySelector(".student-class-example");if(oldExample)oldExample.remove();
   addHint(year,"ISP學年度（非入學）","academicYear");
-  bindAcademicYearSync(form);
-  syncAcademicYearFromGrade(form);
 }
 async function apply(){
   await resolveAccess();await refreshRecords();enhanceEditor();enhanceList();
@@ -202,4 +161,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.1.3 loaded");
+console.log("Semester ISP list actions/copy v1.1.4 loaded");
