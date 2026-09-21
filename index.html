@@ -27,7 +27,21 @@
 <label class="boxed">學生需求評估<textarea name="studentNeedsAssessment" rows="5"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="needs" data-ai-target="studentNeedsAssessment">✨ AI 自動產生整體評估</button></label>
 <label class="boxed">特教支持服務及策略<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="strategies" data-ai-target="serviceEvaluationSummary">✨ AI 自動產生支持策略</button></label>
 <label class="boxed">其他<textarea name="semesterOther" rows="4"></textarea></label>
-<div class="actions sticky-actions"><button type="submit" class="primary">儲存學期 ISP</button><button type="button" id="downloadSemesterIspBtn" class="secondary">下載學期 ISP Word</button></div>
+
+<section id="semesterTeacherIspSummaryPanel" class="boxed hidden">
+<h3>任課老師 ISP 摘要預覽</h3>
+<p class="field-hint">依目前這一份學期 ISP 內容統整；此處修改不會寫回或覆蓋學期 ISP 表單。</p>
+<div class="official-grid cols-2">
+<label>科系<input id="semesterTeacherSummaryDepartment"></label><label>班級<input id="semesterTeacherSummaryClass"></label>
+<label>學生姓名<input id="semesterTeacherSummaryStudentName"></label><label>障別<input id="semesterTeacherSummaryDisability"></label>
+<label>導師姓名<input id="semesterTeacherSummaryAdvisor"></label><label>輔導老師姓名<input id="semesterTeacherSummaryCounselor"></label><label>輔導老師分機<input id="semesterTeacherSummaryExtension"></label>
+</div>
+<label>障礙現況（固定整理 5 點）<textarea id="semesterTeacherSummaryStatus" rows="9"></textarea></label>
+<label>特教支持服務及策略（固定整理 5 點）<textarea id="semesterTeacherSummaryStrategies" rows="9"></textarea></label>
+<div class="actions"><button type="button" id="downloadSemesterTeacherSummaryBtn" class="primary">下載任課老師版 Word</button><button type="button" id="closeSemesterTeacherSummaryBtn" class="secondary">關閉預覽</button></div>
+</section>
+
+<div class="actions sticky-actions"><button type="submit" class="primary">儲存學期 ISP</button><button type="button" id="downloadSemesterIspBtn" class="secondary">下載學期 ISP Word</button><button type="button" id="generateSemesterTeacherSummaryBtn" class="secondary">產生任課老師 ISP 摘要</button></div>
 </form></section>
 
 <section id="ispEditor" class="page hidden"><div class="page-head sticky-head"><div><h1>新生ISP總表</h1><p>v1.0｜正式版</p></div><button id="backBtn" class="secondary">返回</button></div>
