@@ -17,7 +17,7 @@ window.fetch=(input,init)=>{
   }catch(error){console.warn("ISP route fallback",error);}
   return nativeFetch(input,init);
 };
-await import("./app-core.js?v=1.6.2");
+await import("./app-core.js?v=1.6.3");
 await import("./isp-autosave-hotfix.js?v=1.0.1");
 await import("./isp-structure-enhancements.js?v=2.0.3");
 await import("./isp-ui-filters-support-v2.1.js?v=2.1.2");
