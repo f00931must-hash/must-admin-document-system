@@ -97,7 +97,7 @@ function exportData(f){
     phoneBlock:`寢電：${f.dormPhone||""}
 住宅：${f.homePhone||""}
 手機：${f.mobile||""}`,
-    certificateBlock:`身心障礙手冊（證明）：${markOne(f.disabilityCertificate,"有")}有（手冊記載類別：${f.certificateCategory||""} 程度：${f.certificateLevel||""}）ICD：${f.icd||""}\n鑑定日期：${dateText(f.assessmentDate)}；重新鑑定日期：${dateText(f.reassessmentDate)}\n${markOne(f.disabilityCertificate,"無")}無，其他：${markMany(f.otherCertificate,"鑑輔會證明")}鑑輔會證明（證書編號：${f.certificateNo||""} 障別：${f.disabilityType||""}） ${markMany(f.otherCertificate,"醫院診斷證明")}醫院診斷證明（最近文號：${f.hospitalDocNo||""}）`,
+    certificateBlock:`身心障礙手冊（證明）：${markOne(f.disabilityCertificate,"有")}有（手冊記載類別：${f.certificateCategory||""} 程度：${f.certificateLevel||""}） ICD：\n${f.icd||""}　鑑定日期：${dateText(f.assessmentDate)}；重新鑑定日期：${dateText(f.reassessmentDate)}\n${markOne(f.disabilityCertificate,"無")}無，其他：${markMany(f.otherCertificate,"鑑輔會證明")}鑑輔會證明（證書編號：${f.certificateNo||""} 障別：${f.disabilityType||""}）　${markMany(f.otherCertificate,"醫院診斷證明")}醫院診斷證明（最近文號：${f.hospitalDocNo||""}）`,
     disabilityBlock:`障礙特徵：${f.disabilityFeatures||""}\n致障時間：${markOne(f.onsetType,"先天")}先天 ${markOne(f.onsetType,"後天")}後天（年齡：${f.onsetAge||""}歲）`,
     causeBlock:`致障原因：${f.disabilityCause||""}`, treatmentBlock:`治療經過：${f.treatmentHistory||""}`, statusBlock:`障礙現況：（目前復原情形？身體健康狀況？繼續接受治療？）\n${f.currentDisabilityStatus||""}`,
     visionBlock:`（裸視）左：${f.visionRawLeft||""}度 右：${f.visionRawRight||""}度\n（矯正後）左：${f.visionCorrectedLeft||""}度 右：${f.visionCorrectedRight||""}度`,
