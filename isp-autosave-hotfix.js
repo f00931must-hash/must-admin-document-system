@@ -90,11 +90,30 @@ function scheduleAutosave() {
   autosaveTimer = setTimeout(() => saveNow("auto"), AUTOSAVE_DELAY_MS);
 }
 
+async function waitForIdle(timeoutMs = 12000) {
+  const started = Date.now();
+  while (saving || manualSaving) {
+    if (Date.now() - started > timeoutMs) return false;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return true;
+}
+
+async function prepareManual() {
+  clearTimeout(autosaveTimer);
+  if (saving) setStatus("☁️ 等待自動儲存完成…", "saving");
+  return await waitForIdle();
+}
+
 async function flush(reason = "navigation") {
   clearTimeout(autosaveTimer);
-  if (manualSaving) {
-    setStatus("☁️ 等待手動儲存完成…", "saving");
-    return false;
+  if (saving || manualSaving) {
+    setStatus("☁️ 等待目前儲存完成…", "saving");
+    const idle = await waitForIdle();
+    if (!idle) {
+      setStatus("⚠️ 儲存尚未完成，已取消切換頁面", "error");
+      return false;
+    }
   }
   if (!dirty) return true;
   const ok = await saveNow(reason);
@@ -114,7 +133,7 @@ function resetState() {
   setStatus("☁️ 自動儲存已啟用", "idle");
 }
 
-window.__ispAutosave = { flush, reset: resetState };
+window.__ispAutosave = { flush, reset: resetState, prepareManual };
 
 async function saveNow(reason = "auto") {
   const form = document.getElementById("ispForm");
