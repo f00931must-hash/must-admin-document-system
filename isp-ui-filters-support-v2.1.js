@@ -49,24 +49,27 @@ function ensureTotalFilters(){
 function applyTotalFilters(){
   ensureTotalFilters();
   const list=$("docList");if(!list)return;
-  const data=docs.filter(d=>!d.type||d.type==="ISP"),deptSel=$("ispClassFilter"),yearSel=$("ispAcademicYearFilter");
+  const nodes=[...list.children].filter(n=>n.classList.contains("doc-item")&&!n.classList.contains("empty-state"));
+  const deptSel=$("ispClassFilter"),yearSel=$("ispAcademicYearFilter");
   const oldD=deptSel?.value||"",oldY=yearSel?.value||"";
-  const departments=[...new Set(data.map(docDepartment).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"zh-Hant"));
-  const years=[...new Set(data.map(docAcademicYear).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+
+  // 篩選選項直接以目前畫面上實際存在的新生 ISP 卡片為準，避免舊快取殘留。
+  const departments=[...new Set(nodes.map(node=>norm(node.dataset.department)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"zh-Hant"));
+  const years=[...new Set(nodes.map(node=>norm(node.dataset.academicYear)).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+
   if(deptSel){
     deptSel.innerHTML=`<option value="">全部科系</option>${departments.map(x=>`<option value="${x}">${x}</option>`).join("")}`;
-    if(departments.includes(oldD))deptSel.value=oldD;
+    deptSel.value=departments.includes(oldD)?oldD:"";
   }
   if(yearSel){
     yearSel.innerHTML=`<option value="">全部學年度</option>${years.map(x=>`<option value="${x}">${x}學年度</option>`).join("")}`;
-    if(years.includes(oldY))yearSel.value=oldY;
+    yearSel.value=years.includes(oldY)?oldY:"";
   }
+
   const dSel=deptSel?.value||"",ySel=yearSel?.value||"";
-  [...list.children].filter(n=>n.classList.contains("doc-item")).forEach(node=>{
-    const d=totalDocForNode(node);if(!d)return;
-    node.dataset.filterDepartment=docDepartment(d);
-    node.dataset.filterAcademicYear=docAcademicYear(d);
-    node.style.display=(!dSel||node.dataset.filterDepartment===dSel)&&(!ySel||node.dataset.filterAcademicYear===ySel)?"flex":"none";
+  nodes.forEach(node=>{
+    const dept=norm(node.dataset.department),year=norm(node.dataset.academicYear);
+    node.style.display=(!dSel||dept===dSel)&&(!ySel||year===ySel)?"flex":"none";
   });
 }
 
