@@ -182,6 +182,14 @@ function dateParts(v){
 function rocInputDate(v){const p=dateParts(v);return p?`${p.y}/${String(p.month).padStart(2,'0')}/${String(p.day).padStart(2,'0')}`:String(v??'');}
 function dateText(v){const p=dateParts(v);return p?`${p.y}年${p.month}月${p.day}日`:String(v??'').trim();}
 function compactDateText(v){const p=dateParts(v);return p?`${p.y}/${String(p.month).padStart(2,'0')}/${String(p.day).padStart(2,'0')}`:String(v??'').trim();}
+function wordContinuousText(value){
+  return String(value??"")
+    .replace(/\r\n?/g,"\n")
+    .replace(/[\t　]+/g," ")
+    .replace(/\s*\n+\s*/g," ")
+    .replace(/ {2,}/g," ")
+    .trim();
+}
 function exportData(f){
   const sys=f.schoolSystem||"";
   const adm=f.admissionMethod||"";
@@ -190,6 +198,14 @@ function exportData(f){
   ["medStart1","medNextChange1","medStart2","medNextChange2"].forEach(name=>{rocData[name]=compactDateText(f[name]);});
   return {
     ...rocData,
+    abilityHealth:wordContinuousText(f.abilityHealth),
+    abilitySensory:wordContinuousText(f.abilitySensory),
+    abilityMotor:wordContinuousText(f.abilityMotor),
+    abilityCognitive:wordContinuousText(f.abilityCognitive),
+    abilityCommunication:wordContinuousText(f.abilityCommunication),
+    abilityAcademic:wordContinuousText(f.abilityAcademic),
+    abilitySelfCare:wordContinuousText(f.abilitySelfCare),
+    abilitySocialEmotional:wordContinuousText(f.abilitySocialEmotional),
     fillDateText: dateText(f.fillDate),
     birthdayText: compactDateText(f.birthday), admissionDateText: compactDateText(f.admissionDate),
     leaveDateText: compactDateText(f.leaveDate),
@@ -629,7 +645,8 @@ function patchNewbornIspWordLayout(zip,data){
     // 12pt 中文約 240 twips／字；「通訊地址：」5 字，使用懸掛縮排讓自動換行對齊地址首字。
     replaceBlock("就學期間通訊（",addressLines,[
       {},
-      {left:1200,hanging:1200},
+      // 通訊地址第二行：左縮排 4.9 cm（Word twips 約 2778）
+      {left:2778,hanging:2778},
       {left:720,hanging:720}
     ]);
   }
@@ -640,10 +657,62 @@ function patchNewbornIspWordLayout(zip,data){
     replaceBlock("身心障礙手冊（證明）：",certLines,[
       {},
       {left:2640},
-      {left:2640},
-      // 醫院證明與上一行「鑑輔會證明」的核取方塊對齊。
-      {left:4080}
+      // 「□無」：左縮排 4.45 cm（約 2523 twips）
+      {left:2523},
+      // 「□醫院診斷證明」：左縮排 6.99 cm（約 3963 twips）
+      {left:3963}
     ]);
+  }
+
+  function elementChildren(node,name){
+    return [...node.childNodes].filter(n=>n.nodeType===1&&n.namespaceURI===NS&&(!name||n.localName===name));
+  }
+  function nextElementSibling(node,name){
+    let cur=node?.nextSibling||null;
+    while(cur){if(cur.nodeType===1&&cur.namespaceURI===NS&&(!name||cur.localName===name))return cur;cur=cur.nextSibling;}
+    return null;
+  }
+  function setCenteredSignatureCell(tc,name){
+    if(!tc||!name)return;
+    // 清掉簽名格內原本的空白段落，保留儲存格屬性。
+    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
+    const p=xml.createElementNS(NS,"w:p");
+    const pPr=xml.createElementNS(NS,"w:pPr");
+    const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val","center");
+    pPr.appendChild(jc);p.appendChild(pPr);
+
+    const r=xml.createElementNS(NS,"w:r");
+    const rPr=xml.createElementNS(NS,"w:rPr");
+    const rFonts=xml.createElementNS(NS,"w:rFonts");
+    rFonts.setAttributeNS(NS,"w:ascii","DFKai-SB");
+    rFonts.setAttributeNS(NS,"w:hAnsi","DFKai-SB");
+    rFonts.setAttributeNS(NS,"w:eastAsia","標楷體");
+    const b=xml.createElementNS(NS,"w:b");
+    const sz=xml.createElementNS(NS,"w:sz");sz.setAttributeNS(NS,"w:val","32");
+    const szCs=xml.createElementNS(NS,"w:szCs");szCs.setAttributeNS(NS,"w:val","32");
+    rPr.appendChild(rFonts);rPr.appendChild(b);rPr.appendChild(sz);rPr.appendChild(szCs);
+    r.appendChild(rPr);
+    const t=xml.createElementNS(NS,"w:t");t.textContent=name;r.appendChild(t);
+    p.appendChild(r);tc.appendChild(p);
+
+    // 儲存格垂直置中。
+    let tcPr=elementChildren(tc,"tcPr")[0];
+    if(!tcPr){tcPr=xml.createElementNS(NS,"w:tcPr");tc.insertBefore(tcPr,tc.firstChild);}
+    let vAlign=elementChildren(tcPr,"vAlign")[0];
+    if(!vAlign){vAlign=xml.createElementNS(NS,"w:vAlign");tcPr.appendChild(vAlign);}
+    vAlign.setAttributeNS(NS,"w:val","center");
+  }
+
+  // 找到「學生簽名」標題所在列，將下一列左側簽名格填入學生姓名。
+  const signatureText=[...xml.getElementsByTagNameNS(NS,"t")].find(t=>(t.textContent||"").replace(/\s/g,"").includes("學生簽名"));
+  if(signatureText){
+    let tc=signatureText.parentNode;
+    while(tc&&!(tc.namespaceURI===NS&&tc.localName==="tc"))tc=tc.parentNode;
+    let tr=tc;
+    while(tr&&!(tr.namespaceURI===NS&&tr.localName==="tr"))tr=tr.parentNode;
+    const nextTr=nextElementSibling(tr,"tr");
+    const signatureCell=nextTr?elementChildren(nextTr,"tc")[0]:null;
+    setCenteredSignatureCell(signatureCell,String(data.studentName||"").trim());
   }
 
   zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
