@@ -4,7 +4,7 @@ import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, whe
 import { firebaseConfig } from "./firebase-config.js";
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 const $=id=>document.getElementById(id);let currentUser=null,currentAccess=null;let ispManualSubmitting=false;
-const ISP_AI_ENDPOINT="https://must-resource-ai.f00931-must.workers.dev/ai/isp-summary";
+const ISP_AI_ENDPOINT="https://must-isp-ai-697793258377.asia-east1.run.app/ai/isp-summary";
 function normalizedEmail(value){return String(value||'').trim().toLowerCase();}
 function workspaceOwnerEmail(){return currentAccess?.role==='assistant'?normalizedEmail(currentAccess.ownerEmail):normalizedEmail(currentAccess?.email||currentUser?.email);}
 function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}function esc(v){return String(v??'').replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[s]));}
