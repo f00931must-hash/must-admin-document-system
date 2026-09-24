@@ -646,7 +646,6 @@ function patchNewbornIspWordLayout(zip,data){
     ]);
   }
 
-  file.asText=undefined;
   zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
 }
 
