@@ -99,8 +99,8 @@ async function copyRecord(record,button){
 async function deleteRecord(record,button){
   if(!record||role==="assistant")return;
   const f=record.form||{},title=`${record.studentName||"未命名"}｜${f.academicYear||"未填"}學年度第${f.semester||"未填"}學期`;
-  if(!confirm(`確定要永久刪除「${title}」嗎？\n\n刪除後無法復原。`))return;
-  if(!confirm(`請再次確認：真的要刪除「${title}」這一份學期 ISP 嗎？`))return;
+  if(!confirm(`確定要從目前列表移除「${title}」嗎？\n\n系統會先保留安全備份，再從列表移除。`))return;
+  if(!confirm(`請再次確認：要移除「${title}」這一份學期 ISP 嗎？`))return;
   button.disabled=true;
   try{
     const user=auth.currentUser;
