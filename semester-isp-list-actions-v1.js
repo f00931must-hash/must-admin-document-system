@@ -35,8 +35,7 @@ async function resolveAccess(){
 async function refreshRecords(){
   if(!ownerEmail)await resolveAccess();
   if(!ownerEmail)return;
-  const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail)));
-  const all=snap.docs.map(x=>({id:x.id,...x.data()}));
+  const all=await window.__adminDocumentsCache.getOwnerDocs(ownerEmail);
   records=all.filter(x=>x.type==="SEMESTER_ISP");
   baseIspRecords=all.filter(x=>!x.type||x.type==="ISP");
 }
