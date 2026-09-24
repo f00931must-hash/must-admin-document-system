@@ -186,7 +186,7 @@ function wordContinuousText(value){
   return String(value??"")
     .replace(/\r\n?/g,"\n")
     .replace(/[\t　]+/g," ")
-    .replace(/\s*\n+\s*/g," ")
+    .replace(/\s*\n+\s*/g,"")
     .replace(/ {2,}/g," ")
     .trim();
 }
