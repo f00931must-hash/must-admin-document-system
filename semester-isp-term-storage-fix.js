@@ -170,15 +170,9 @@ function install(){
   if(installed)return;
   const form=$("semesterIspForm");if(!form||!form.elements.studentGrade||!form.elements.semester)return;
   installed=true;ensureHint();
-  form.elements.studentGrade.addEventListener("change",switchTerm);
-  form.elements.semester.addEventListener("change",switchTerm);
+  // 年級／學期切換由 semester-isp-checkbox-export-fix.js 統一接管。
+  // 本模組只保留提示與儲存後重新整理快取，避免與主流程重複載入／覆寫表單。
   form.addEventListener("submit",()=>{setTimeout(refreshDocs,1200);setTimeout(refreshDocs,3000);});
-  document.addEventListener("click",event=>{
-    if(event.target.closest?.(".open-semester-doc"))setTimeout(restoreCurrentCheckboxes,80);
-  });
-  // Word 下載由 semester-isp-checkbox-export-fix.js v2.3+ 統一接管。
-  // 本模組只保留學期切換、載入與儲存相關邏輯。
-
 }
 
 const observer=new MutationObserver(()=>install());observer.observe(document.documentElement,{childList:true,subtree:true});
