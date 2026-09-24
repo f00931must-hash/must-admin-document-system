@@ -197,12 +197,12 @@ function exportData(f){
     schoolSystemChecks:`${markOne(sys,"大學部")}大學部  ${markOne(sys,"研究所碩士班")}研究所碩士班  ${markOne(sys,"進修部")}進修部  ${markOne(sys,"其他")}其他${sys==="其他"&&f.schoolSystemOther?`：${f.schoolSystemOther}`:""}`,
     admissionMethodChecks:`${markOne(adm,"一般入學考試")}一般入學考試  ${markOne(adm,"身心障礙甄試")}身心障礙甄試\n${markOne(adm,"推薦甄選")}推薦甄選  ${markOne(adm,"轉學考")}轉學考  ${markOne(adm,"其他")}其他${adm==="其他"&&f.admissionMethodOther?`：${f.admissionMethodOther}`:""}`,
     addressBlock:`就學期間通訊（${markOne(f.livingType,"自家")}自家 ${markOne(f.livingType,"校舍")}校舍 ${markOne(f.livingType,"外宿")}外宿 ${markOne(f.livingType,"其他")}其他）
-通訊：${f.mailingAddress||""}
+通訊地址：${f.mailingAddress||""}
 戶籍：${markMany(f.registeredSame,"是")}同上 ${f.registeredAddress||""}`,
     phoneBlock:`寢電：${f.dormPhone||""}
 住宅：${f.homePhone||""}
 手機：${f.mobile||""}`,
-    certificateBlock:`身心障礙手冊（證明）：${markOne(f.disabilityCertificate,"有")}有（手冊記載類別：${f.certificateCategory||""} 程度：${f.certificateLevel||""}） ICD：\n${f.icd||""}　鑑定日期：${dateText(f.assessmentDate)}；重新鑑定日期：${dateText(f.reassessmentDate)}\n${markOne(f.disabilityCertificate,"無")}無，其他：${markMany(f.otherCertificate,"鑑輔會證明")}鑑輔會證明（證書編號：${f.certificateNo||""} 障別：${f.disabilityType||""}）　${markMany(f.otherCertificate,"醫院診斷證明")}醫院診斷證明（最近文號：${f.hospitalDocNo||""}）`,
+    certificateBlock:`身心障礙手冊（證明）：${markOne(f.disabilityCertificate,"有")}有（手冊記載類別：${f.certificateCategory||""} 程度：${f.certificateLevel||""}） ICD：\n${f.icd||""}　鑑定日期：${dateText(f.assessmentDate)}；重新鑑定日期：${dateText(f.reassessmentDate)}\n${markOne(f.disabilityCertificate,"無")}無，其他：${markMany(f.otherCertificate,"鑑輔會證明")}鑑輔會證明（證書編號：${f.certificateNo||""} 障別：${f.disabilityType||""}）\n${markMany(f.otherCertificate,"醫院診斷證明")}醫院診斷證明（最近文號：${f.hospitalDocNo||""}）`,
     disabilityBlock:`障礙特徵：${f.disabilityFeatures||""}\n致障時間：${markOne(f.onsetType,"先天")}先天 ${markOne(f.onsetType,"後天")}後天（年齡：${f.onsetAge||""}歲）`,
     causeBlock:`致障原因：${f.disabilityCause||""}`, treatmentBlock:`治療經過：${f.treatmentHistory||""}`, statusBlock:`障礙現況：（目前復原情形？身體健康狀況？繼續接受治療？）\n${f.currentDisabilityStatus||""}`,
     visionBlock:`（裸視）左：${f.visionRawLeft||""}度 右：${f.visionRawRight||""}度\n（矯正後）左：${f.visionCorrectedLeft||""}度 右：${f.visionCorrectedRight||""}度`,
@@ -582,6 +582,74 @@ $("downloadTeacherSummaryBtn").onclick=async()=>{
   }catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}
 };
 
+
+function patchNewbornIspWordLayout(zip,data){
+  const file=zip.file("word/document.xml");if(!file)return;
+  const NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const XMLNS="http://www.w3.org/XML/1998/namespace";
+  const xml=new DOMParser().parseFromString(file.asText(),"application/xml");
+
+  const textOf=p=>[...p.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
+  const firstRunProps=p=>p.getElementsByTagNameNS(NS,"rPr")[0]?.cloneNode(true)||null;
+
+  function ensureParagraphProps(p){
+    let pPr=[...p.childNodes].find(n=>n.nodeType===1&&n.namespaceURI===NS&&n.localName==="pPr");
+    if(!pPr){pPr=xml.createElementNS(NS,"w:pPr");p.insertBefore(pPr,p.firstChild);}
+    return pPr;
+  }
+  function setIndent(p,left=0,hanging=0){
+    const pPr=ensureParagraphProps(p);
+    let ind=[...pPr.childNodes].find(n=>n.nodeType===1&&n.namespaceURI===NS&&n.localName==="ind");
+    if(!ind){ind=xml.createElementNS(NS,"w:ind");pPr.appendChild(ind);}
+    if(left)ind.setAttributeNS(NS,"w:left",String(left));else ind.removeAttributeNS(NS,"left");
+    if(hanging)ind.setAttributeNS(NS,"w:hanging",String(hanging));else ind.removeAttributeNS(NS,"hanging");
+    ind.removeAttributeNS(NS,"firstLine");
+  }
+  function newParagraphLike(source,text,{left=0,hanging=0}={}){
+    const p=xml.createElementNS(NS,"w:p");
+    const sourcePPr=[...source.childNodes].find(n=>n.nodeType===1&&n.namespaceURI===NS&&n.localName==="pPr");
+    if(sourcePPr)p.appendChild(sourcePPr.cloneNode(true));
+    const r=xml.createElementNS(NS,"w:r");
+    const rPr=firstRunProps(source);if(rPr)r.appendChild(rPr);
+    const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=text;
+    r.appendChild(t);p.appendChild(r);
+    setIndent(p,left,hanging);
+    return p;
+  }
+  function replaceBlock(prefix,lines,layouts){
+    const paragraphs=[...xml.getElementsByTagNameNS(NS,"p")];
+    const source=paragraphs.find(p=>textOf(p).includes(prefix));if(!source||!source.parentNode)return;
+    const parent=source.parentNode;
+    lines.forEach((line,i)=>parent.insertBefore(newParagraphLike(source,line,layouts[i]||{}),source));
+    parent.removeChild(source);
+  }
+
+  const addressLines=String(data.addressBlock||"").split("\n");
+  if(addressLines.length>=3){
+    // 12pt 中文約 240 twips／字；「通訊地址：」5 字，使用懸掛縮排讓自動換行對齊地址首字。
+    replaceBlock("就學期間通訊（",addressLines,[
+      {},
+      {left:1200,hanging:1200},
+      {left:720,hanging:720}
+    ]);
+  }
+
+  const certLines=String(data.certificateBlock||"").split("\n");
+  if(certLines.length>=4){
+    // 「身心障礙手冊（證明）：」約 11 個全形字寬；無／其他證明從「有」的核取方塊位置開始。
+    replaceBlock("身心障礙手冊（證明）：",certLines,[
+      {},
+      {left:2640},
+      {left:2640},
+      // 醫院證明與上一行「鑑輔會證明」的核取方塊對齊。
+      {left:4080}
+    ]);
+  }
+
+  file.asText=undefined;
+  zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
+}
+
 $("downloadBtn").onclick=async()=>{
   try{
     if (typeof window.PizZip === "undefined") throw new Error("Word 元件 PizZip 載入失敗，請重新整理頁面後再試");
@@ -593,7 +661,9 @@ $("downloadBtn").onclick=async()=>{
     const buf=await res.arrayBuffer();
     const zip=new window.PizZip(buf);
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
-    docx.render(exportData(f));
+    const renderedData=exportData(f);
+    docx.render(renderedData);
+    patchNewbornIspWordLayout(docx.getZip(),renderedData);
     const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(f.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
     saveAs(blob,`${safe}_新生ISP總表.docx`);
