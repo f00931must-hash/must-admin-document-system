@@ -51,8 +51,7 @@ async function resolveOwner(user){
 async function refreshDocs(){
   if(!ownerEmail)return;
   try{
-    const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail)));
-    const all=snap.docs.map(x=>({id:x.id,...x.data()}));
+    const all=await window.__adminDocumentsCache.getOwnerDocs(ownerEmail);
     semesterDocs=all.filter(x=>x.type==="SEMESTER_ISP");
     baseIspDocs=all.filter(x=>!x.type||x.type==="ISP");
   }catch(error){console.warn("Semester ISP term load failed",error);}
