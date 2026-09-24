@@ -5,6 +5,8 @@ import { getFirestore, collection, addDoc, updateDoc, doc, getDoc, serverTimesta
 const AUTOSAVE_DELAY_MS = 1800;
 let dirty = false;
 let saving = false;
+let manualSaving = false;
+let manualSnapshotVersion = 0;
 let changeVersion = 0;
 let autosaveTimer = null;
 let cachedAccess = null;
@@ -84,13 +86,40 @@ async function resolveAccess(db, user) {
 
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
+  if (manualSaving) return;
   autosaveTimer = setTimeout(() => saveNow("auto"), AUTOSAVE_DELAY_MS);
 }
+
+async function flush(reason = "navigation") {
+  clearTimeout(autosaveTimer);
+  if (manualSaving) {
+    setStatus("☁️ 等待手動儲存完成…", "saving");
+    return false;
+  }
+  if (!dirty) return true;
+  const ok = await saveNow(reason);
+  if (!ok && dirty) {
+    setStatus("⚠️ 尚未成功儲存，已取消切換頁面", "error");
+    return false;
+  }
+  return true;
+}
+
+function resetState() {
+  clearTimeout(autosaveTimer);
+  dirty = false;
+  saving = false;
+  manualSaving = false;
+  manualSnapshotVersion = changeVersion;
+  setStatus("☁️ 自動儲存已啟用", "idle");
+}
+
+window.__ispAutosave = { flush, reset: resetState };
 
 async function saveNow(reason = "auto") {
   const form = document.getElementById("ispForm");
   const docIdEl = document.getElementById("docId");
-  if (!form || !docIdEl || saving || !dirty) return false;
+  if (!form || !docIdEl || saving || manualSaving || !dirty) return false;
   if (!getApps().length) return false;
 
   const app = getApp();
@@ -172,26 +201,35 @@ function initAutosave() {
   form.addEventListener("input", markDirty, true);
   form.addEventListener("change", markDirty, true);
 
-  form.addEventListener("submit", () => {
+  document.addEventListener("isp:manual-save-start", () => {
     clearTimeout(autosaveTimer);
+    manualSaving = true;
+    manualSnapshotVersion = changeVersion;
     setStatus("☁️ 手動儲存中…", "saving");
-    setTimeout(() => {
-      if (document.getElementById("docId")?.value) {
-        dirty = false;
-        const t = new Date().toLocaleTimeString("zh-TW", { hour12: false });
-        setStatus(`✅ 已儲存 ${t}`, "saved");
-      }
-    }, 900);
-  }, true);
+  });
 
-  ["backBtn", "newIspBtn"].forEach(id => {
-    document.getElementById(id)?.addEventListener("click", () => {
-      if (dirty) saveNow("navigation");
-    }, true);
+  document.addEventListener("isp:manual-save-success", () => {
+    manualSaving = false;
+    if (changeVersion === manualSnapshotVersion) {
+      dirty = false;
+      const t = new Date().toLocaleTimeString("zh-TW", { hour12: false });
+      setStatus(`✅ 已儲存 ${t}`, "saved");
+    } else {
+      dirty = true;
+      setStatus("🟡 儲存期間有新修改，等待再次自動儲存", "dirty");
+      scheduleAutosave();
+    }
+  });
+
+  document.addEventListener("isp:manual-save-error", () => {
+    manualSaving = false;
+    dirty = true;
+    setStatus("⚠️ 手動儲存失敗，內容仍保留在畫面", "error");
+    scheduleAutosave();
   });
 
   window.addEventListener("beforeunload", event => {
-    if (!dirty && !saving) return;
+    if (!dirty && !saving && !manualSaving) return;
     event.preventDefault();
     event.returnValue = "";
   });
