@@ -44,9 +44,9 @@ async function liveTermDoc(form){
     const s=await getDoc(doc(db,"settings","adminAccess"));const a=s.data()?.users?.[email];
     if(a?.enabled!==false&&a?.role==="assistant"&&a?.ownerEmail)owner=norm(a.ownerEmail).toLowerCase();
   }catch{}
-  const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",owner)));
+  const all=await window.__adminDocumentsCache.getOwnerDocs(owner);
   const grade=norm(f.studentGrade),sem=norm(f.semester),name=normName(f.studentName),dept=norm(f.department);
-  const docs=snap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>x.type==="SEMESTER_ISP"&&normName(x.studentName)===name&&norm(x.form?.department)===dept&&norm(x.form?.studentGrade)===grade&&String(x.form?.semester||"")===sem);
+  const docs=all.filter(x=>x.type==="SEMESTER_ISP"&&normName(x.studentName)===name&&norm(x.form?.department)===dept&&norm(x.form?.studentGrade)===grade&&String(x.form?.semester||"")===sem);
   docs.sort((a,b)=>(b.updatedAt?.seconds||b.createdAt?.seconds||0)-(a.updatedAt?.seconds||a.createdAt?.seconds||0));
   return docs[0]||null;
 }
