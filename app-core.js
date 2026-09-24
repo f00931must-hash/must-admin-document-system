@@ -81,6 +81,10 @@ function renderDocs(){
     const div=document.createElement('div');
     div.className='doc-item';
     const year=academicYearFromAdmission(d.form?.admissionDate);
+    const department=String(d.form?.department||'').trim();
+    div.dataset.department=department;
+    div.dataset.academicYear=year?String(year):'';
+    div.dataset.docId=d.id||'';
     const duplicateReason=duplicateReasonFor(d);
     if(duplicateReason)div.classList.add('suspected-duplicate');
     div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP ${duplicateReason?`<span class="duplicate-badge" title="系統僅提示，不會自動刪除或合併">⚠ 疑似重複</span>`:''}</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`學年度 ${year}`:'尚未填學年度'}${duplicateReason?`　<span class="duplicate-reason">${esc(duplicateReason)}</span>`:''}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;
