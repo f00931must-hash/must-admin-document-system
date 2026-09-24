@@ -703,6 +703,26 @@ function patchNewbornIspWordLayout(zip,data){
     vAlign.setAttributeNS(NS,"w:val","center");
   }
 
+  // 資源教室輔導老師簽章欄：在下方簽章格多補一個空白段落，保留足夠蓋章高度。
+  const counselorSignText=[...xml.getElementsByTagNameNS(NS,"t")].find(t=>(t.textContent||"").replace(/\s/g,"").includes("資源教室輔導老師簽章"));
+  if(counselorSignText){
+    let counselorTc=counselorSignText.parentNode;
+    while(counselorTc&&!(counselorTc.namespaceURI===NS&&counselorTc.localName==="tc"))counselorTc=counselorTc.parentNode;
+    let counselorTr=counselorTc;
+    while(counselorTr&&!(counselorTr.namespaceURI===NS&&counselorTr.localName==="tr"))counselorTr=counselorTr.parentNode;
+    const nextTr=nextElementSibling(counselorTr,"tr");
+    if(nextTr){
+      const cells=elementChildren(nextTr,"tc");
+      const targetCell=cells[cells.length-1]||null;
+      if(targetCell){
+        const blankP=xml.createElementNS(NS,"w:p");
+        const blankPPr=xml.createElementNS(NS,"w:pPr");
+        blankP.appendChild(blankPPr);
+        targetCell.appendChild(blankP);
+      }
+    }
+  }
+
   // 找到「學生簽名」標題所在列，將下一列左側簽名格填入學生姓名。
   const signatureText=[...xml.getElementsByTagNameNS(NS,"t")].find(t=>(t.textContent||"").replace(/\s/g,"").includes("學生簽名"));
   if(signatureText){
