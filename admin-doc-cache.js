@@ -2,7 +2,7 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.
 import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const db=getFirestore(getApp());
-const TTL_MS=1500;
+const TTL_MS=800;
 const cache=new Map();
 const inflight=new Map();
 const norm=v=>String(v??"").trim().toLowerCase();
