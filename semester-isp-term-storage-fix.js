@@ -176,12 +176,9 @@ function install(){
   document.addEventListener("click",event=>{
     if(event.target.closest?.(".open-semester-doc"))setTimeout(restoreCurrentCheckboxes,80);
   });
-  document.addEventListener("click",async event=>{
-    const btn=event.target.closest?.("#downloadSemesterIspBtn");if(!btn)return;
-    event.preventDefault();event.stopImmediatePropagation();
-    const old=btn.textContent;btn.disabled=true;btn.textContent="產生 Word 中…";
-    try{await downloadSemesterWord();}catch(error){console.error(error);alert(`Word 產生失敗：${error?.message||error}`);}finally{btn.disabled=false;btn.textContent=old;}
-  },true);
+  // Word 下載由 semester-isp-checkbox-export-fix.js v2.3+ 統一接管。
+  // 本模組只保留學期切換、載入與儲存相關邏輯。
+
 }
 
 const observer=new MutationObserver(()=>install());observer.observe(document.documentElement,{childList:true,subtree:true});
