@@ -103,10 +103,25 @@ async function deleteRecord(record,button){
   if(!confirm(`請再次確認：真的要刪除「${title}」這一份學期 ISP 嗎？`))return;
   button.disabled=true;
   try{
+    const user=auth.currentUser;
+    const {id:__removedId,...__originalData}=record;
+    await addDoc(collection(db,"adminDocuments"),{
+      ownerEmail,
+      ownerUid:user?.uid||record.ownerUid||"",
+      type:"DELETED_BACKUP",
+      sourceType:"SEMESTER_ISP",
+      sourceDocumentId:record.id,
+      studentName:record.studentName||"",
+      backupData:__originalData,
+      deletedAt:serverTimestamp(),
+      createdAt:serverTimestamp(),
+      createdByUid:user?.uid||"",
+      createdByEmail:norm(user?.email).toLowerCase()
+    });
     await deleteDoc(doc(db,"adminDocuments",record.id));
     records=records.filter(x=>x.id!==record.id);
     button.closest(".doc-item")?.remove();
-    alert("已永久刪除這一份學期 ISP。其他學期與新生 ISP 總表沒有變動。");
+    alert("已從目前列表刪除；系統已先保留一份安全備份。其他學期與新生 ISP 總表沒有變動。");
   }catch(error){
     console.error(error);button.disabled=false;alert("刪除失敗，請確認帳號權限或稍後再試。");
   }
