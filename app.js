@@ -17,11 +17,11 @@ window.fetch=(input,init)=>{
   }catch(error){console.warn("ISP route fallback",error);}
   return nativeFetch(input,init);
 };
-await import("./app-core.js?v=1.6.8");
+await import("./app-core.js?v=1.6.9");
 await import("./admin-doc-cache.js?v=1.0.0");
 await import("./isp-autosave-hotfix.js?v=1.1.1");
 await import("./isp-structure-enhancements.js?v=2.0.5");
-await import("./isp-ui-filters-support-v2.1.js?v=2.1.4");
+await import("./isp-ui-filters-support-v2.1.js?v=2.1.5");
 await import("./semester-isp-grade-8-fix.js?v=1.0.0");
 await import("./semester-isp-list-actions-v1.js?v=1.1.6");
 await import("./semester-isp-term-storage-fix.js?v=2.2.6");
