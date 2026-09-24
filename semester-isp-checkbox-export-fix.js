@@ -135,10 +135,11 @@ async function downloadFixed(event){
 }
 function install(){
   const form=$("semesterIspForm");if(!form||form.dataset.checkboxFix23)return;form.dataset.checkboxFix23="1";
+  // 唯一的年級／學期切換主流程。
   form.elements.studentGrade?.addEventListener("change",switchTermLive,true);
   form.elements.semester?.addEventListener("change",switchTermLive,true);
-  form.addEventListener("submit",()=>{const snap=supportSnapshot(form);let n=0;const timer=setInterval(()=>{n++;persistExactSupports(snap);if(n>=10||$("semesterDocId")?.value)clearInterval(timer);},250);},true);
-  document.addEventListener("click",async e=>{if(e.target.closest?.(".open-semester-doc")){setTimeout(async()=>{const hit=await liveTermDoc(form).catch(()=>null);if(hit)applySupports(form,hit.form||{});},120);}},true);
+  // 勾選值校正與開啟既有文件後的還原交由 checkbox-value-guard；
+  // 正式 submit 會一次儲存完整表單，不再額外重複 patch Firestore。
   document.addEventListener("click",downloadFixed,true);
 }
 install();
