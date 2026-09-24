@@ -18,7 +18,16 @@ function extractGrade(value){const s=norm(value);if(/^研[一二]/.test(s))retur
 function classSuffix(value){return norm(value).replace(/^(?:[^一二三四五六七研]*系)?(?:研[一二]|[一二三四五六七])?/u,"").trim();}
 function docGrade(d){return norm(d?.form?.studentGrade)||extractGrade(d?.form?.studentClass)||gradeFromAdmission(d?.form?.admissionDate)||"未設定";}
 function docClass(d){const f=d?.form||{},grade=docGrade(d)==="未設定"?"":docGrade(d);return `${deptText(f.department)}${grade}${classSuffix(f.studentClass)}`.trim()||"未設定";}
-function docDepartment(d){return norm(d?.form?.department)||"未設定";}
+function docDepartment(d){return norm(d?.form?.department);}
+function docAcademicYear(d){
+  const explicit=Number(norm(d?.form?.academicYear));
+  if(explicit>0)return String(explicit);
+  const m=norm(d?.form?.admissionDate).match(/^(\d{2,4})\s*[年\/.\-]\s*(\d{1,2})/);
+  if(!m)return "";
+  let y=Number(m[1]);if(y>=1912)y-=1911;
+  const month=Number(m[2]);
+  return String(month>=8?y:Math.max(0,y-1));
+}
 
 async function resolveOwner(user){
   if(!user)return "";const email=norm(user.email).toLowerCase();
@@ -29,8 +38,37 @@ async function resolveOwner(user){
 async function refreshDocs(){if(!ownerEmail)return;try{docs=await window.__adminDocumentsCache.getOwnerDocs(ownerEmail);applyAll();}catch(e){console.warn("ISP filter load failed",e);}}
 
 function totalDocForNode(node){const name=(node.querySelector("strong")?.textContent||"").split("｜")[0].trim();const meta=node.querySelector(".doc-meta")?.textContent||"";const studentId=meta.trim().split(/\s+/)[0];return docs.find(d=>(!d.type||d.type==="ISP")&&((studentId&&norm(d.studentId)===studentId)||normName(d.studentName)===normName(name)));}
-function ensureTotalFilters(){const head=$("mine")?.querySelector(".page-head");if(!head||$("ispClassFilter"))return;const wrap=document.createElement("div");wrap.className="sort-control";wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";wrap.innerHTML='<label>科系篩選<select id="ispClassFilter"><option value="">全部科系</option></select></label><label>年級篩選<select id="ispGradeFilter"><option value="">全部年級</option></select></label>';head.insertBefore(wrap,head.querySelector(".sort-control")||null);wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applyTotalFilters));}
-function applyTotalFilters(){ensureTotalFilters();const list=$("docList");if(!list)return;const data=docs.filter(d=>!d.type||d.type==="ISP"),deptSel=$("ispClassFilter"),gradeSel=$("ispGradeFilter"),oldD=deptSel?.value||"",oldG=gradeSel?.value||"";const departments=[...new Set(data.map(docDepartment).filter(x=>x!=="未設定"))].sort((a,b)=>a.localeCompare(b,"zh-Hant"));const grades=[...new Set(data.map(docGrade).filter(x=>x!=="未設定"))].sort((a,b)=>(gradeOrder[a]??99)-(gradeOrder[b]??99));if(deptSel){deptSel.innerHTML=`<option value="">全部科系</option>${departments.map(x=>`<option value="${x}">${x}</option>`).join("")}`;if(departments.includes(oldD))deptSel.value=oldD;}if(gradeSel){gradeSel.innerHTML=`<option value="">全部年級</option>${grades.map(x=>`<option value="${x}">${x}年級</option>`).join("")}`;if(grades.includes(oldG))gradeSel.value=oldG;}const dSel=deptSel?.value||"",g=gradeSel?.value||"";[...list.children].filter(n=>n.classList.contains("doc-item")).forEach(node=>{const d=totalDocForNode(node);if(!d)return;node.dataset.filterDepartment=docDepartment(d);node.dataset.filterGrade=docGrade(d);node.style.display=(!dSel||node.dataset.filterDepartment===dSel)&&(!g||node.dataset.filterGrade===g)?"flex":"none";});}
+function ensureTotalFilters(){
+  const head=$("mine")?.querySelector(".page-head");if(!head||$("ispClassFilter"))return;
+  const wrap=document.createElement("div");wrap.className="sort-control";
+  wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";
+  wrap.innerHTML='<label>科系篩選<select id="ispClassFilter"><option value="">全部科系</option></select></label><label>學年度篩選<select id="ispAcademicYearFilter"><option value="">全部學年度</option></select></label>';
+  head.insertBefore(wrap,head.querySelector(".sort-control")||null);
+  wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applyTotalFilters));
+}
+function applyTotalFilters(){
+  ensureTotalFilters();
+  const list=$("docList");if(!list)return;
+  const data=docs.filter(d=>!d.type||d.type==="ISP"),deptSel=$("ispClassFilter"),yearSel=$("ispAcademicYearFilter");
+  const oldD=deptSel?.value||"",oldY=yearSel?.value||"";
+  const departments=[...new Set(data.map(docDepartment).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"zh-Hant"));
+  const years=[...new Set(data.map(docAcademicYear).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+  if(deptSel){
+    deptSel.innerHTML=`<option value="">全部科系</option>${departments.map(x=>`<option value="${x}">${x}</option>`).join("")}`;
+    if(departments.includes(oldD))deptSel.value=oldD;
+  }
+  if(yearSel){
+    yearSel.innerHTML=`<option value="">全部學年度</option>${years.map(x=>`<option value="${x}">${x}學年度</option>`).join("")}`;
+    if(years.includes(oldY))yearSel.value=oldY;
+  }
+  const dSel=deptSel?.value||"",ySel=yearSel?.value||"";
+  [...list.children].filter(n=>n.classList.contains("doc-item")).forEach(node=>{
+    const d=totalDocForNode(node);if(!d)return;
+    node.dataset.filterDepartment=docDepartment(d);
+    node.dataset.filterAcademicYear=docAcademicYear(d);
+    node.style.display=(!dSel||node.dataset.filterDepartment===dSel)&&(!ySel||node.dataset.filterAcademicYear===ySel)?"flex":"none";
+  });
+}
 
 function semesterDocFromRecordNode(node){const strong=node.querySelector("strong")?.textContent||"",name=strong.split("｜")[0].trim(),m=strong.match(/｜(.+?)學年度第(.+?)學期/),year=m?.[1]||"",sem=m?.[2]||"";return docs.find(d=>d.type==="SEMESTER_ISP"&&normName(d.studentName)===normName(name)&&String(d.form?.academicYear||"")===year&&String(d.form?.semester||"")===sem);}
 function ensureSemesterFilters(){const head=$("semesterIsp")?.querySelector(".page-head");if(!head||$("semesterClassFilter"))return;const wrap=document.createElement("div");wrap.className="sort-control";wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";wrap.innerHTML='<label>科系篩選<select id="semesterClassFilter"><option value="">全部科系</option></select></label><label>年級篩選<select id="semesterGradeFilter"><option value="">全部年級</option></select></label>';const sort=$("semesterIspSort")?.parentElement;head.insertBefore(wrap,sort||$("newSemesterIspListBtn"));wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applySemesterFilters));}
