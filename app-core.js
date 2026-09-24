@@ -50,28 +50,77 @@ $("ispForm").onsubmit=async e=>{
 let ispDocuments=[];
 function academicYearFromAdmission(value){const parsed=dateParts(value);if(!parsed)return 0;return parsed.month>=8?parsed.y:Math.max(0,parsed.y-1);}
 function createdSeconds(item){return item.createdAt?.seconds||0;}
-function sortedIspDocuments(){const mode=$("ispSort")?.value||"admission-desc";return [...ispDocuments].sort((a,b)=>{if(mode.startsWith("admission")){const yearA=academicYearFromAdmission(a.form?.admissionDate),yearB=academicYearFromAdmission(b.form?.admissionDate);if(!yearA||!yearB){if(yearA!==yearB)return yearA? -1:1;}else if(yearA!==yearB)return mode==="admission-asc"?yearA-yearB:yearB-yearA;return mode==="admission-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);}return mode==="created-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);});}
-function renderDocs(){const list=$("docList");list.innerHTML='';const items=sortedIspDocuments();if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';const year=academicYearFromAdmission(d.form?.admissionDate);div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`學年度 ${year}`:'尚未填學年度'}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};const deleteButton=div.querySelector('.delete-doc');if(deleteButton)deleteButton.onclick=async()=>{const name=d.studentName||'未命名';if(!confirm(`確定要從目前列表移除「${name}」的新生 ISP 總表嗎？\n\n系統會先保留安全備份，再從列表移除。`))return;if(!confirm(`請再次確認：要移除「${name}」嗎？`))return;deleteButton.disabled=true;try{
-  const {id:__removedId,...__originalData}=d;
-  await addDoc(collection(db,'adminDocuments'),{
-    ownerEmail:workspaceOwnerEmail(),
-    ownerUid:currentUser.uid,
-    type:'DELETED_BACKUP',
-    sourceType:d.type||'ISP',
-    sourceDocumentId:d.id,
-    studentName:d.studentName||'',
-    studentId:d.studentId||'',
-    backupData:__originalData,
-    deletedAt:serverTimestamp(),
-    createdAt:serverTimestamp(),
-    createdByUid:currentUser.uid,
-    createdByEmail:normalizedEmail(currentUser.email)
+function normalizedStudentName(value){return String(value||"").trim().replace(/[\s　]+/g,"");}
+function duplicateReasonFor(docItem){
+  const name=normalizedStudentName(docItem.studentName||docItem.form?.studentName);
+  if(!name)return "";
+  const id=String(docItem.studentId||docItem.form?.studentId||"").trim();
+  const year=academicYearFromAdmission(docItem.form?.admissionDate);
+  const matches=ispDocuments.filter(other=>{
+    if(other.id===docItem.id)return false;
+    if(normalizedStudentName(other.studentName||other.form?.studentName)!==name)return false;
+    const otherId=String(other.studentId||other.form?.studentId||"").trim();
+    const otherYear=academicYearFromAdmission(other.form?.admissionDate);
+    if(id&&otherId&&id===otherId)return true;
+    if(year&&otherYear&&year===otherYear)return true;
+    return false;
   });
-  await deleteDoc(doc(db,'adminDocuments',d.id));
-  ispDocuments=ispDocuments.filter(item=>item.id!==d.id);
-  renderDocs();
-  alert('已從目前列表刪除；系統已先保留一份安全備份。');
-}catch(error){console.error(error);deleteButton.disabled=false;alert('刪除失敗，請確認帳號權限或稍後再試。');}};list.appendChild(div);}}
+  if(!matches.length)return "";
+  const sameId=matches.some(other=>{
+    const otherId=String(other.studentId||other.form?.studentId||"").trim();
+    return id&&otherId&&id===otherId;
+  });
+  return sameId?"同姓名＋同學號":"同姓名＋同學年度";
+}
+function sortedIspDocuments(){const mode=$("ispSort")?.value||"admission-desc";return [...ispDocuments].sort((a,b)=>{if(mode.startsWith("admission")){const yearA=academicYearFromAdmission(a.form?.admissionDate),yearB=academicYearFromAdmission(b.form?.admissionDate);if(!yearA||!yearB){if(yearA!==yearB)return yearA? -1:1;}else if(yearA!==yearB)return mode==="admission-asc"?yearA-yearB:yearB-yearA;return mode==="admission-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);}return mode==="created-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);});}
+function renderDocs(){
+  const list=$("docList");list.innerHTML='';
+  const items=sortedIspDocuments();
+  if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}
+  for(const d of items){
+    const div=document.createElement('div');
+    div.className='doc-item';
+    const year=academicYearFromAdmission(d.form?.admissionDate);
+    const duplicateReason=duplicateReasonFor(d);
+    if(duplicateReason)div.classList.add('suspected-duplicate');
+    div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP ${duplicateReason?`<span class="duplicate-badge" title="系統僅提示，不會自動刪除或合併">⚠ 疑似重複</span>`:''}</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`學年度 ${year}`:'尚未填學年度'}${duplicateReason?`　<span class="duplicate-reason">${esc(duplicateReason)}</span>`:''}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;
+    div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};
+    const deleteButton=div.querySelector('.delete-doc');
+    if(deleteButton)deleteButton.onclick=async()=>{
+      const name=d.studentName||'未命名';
+      if(!confirm(`確定要從目前列表移除「${name}」的新生 ISP 總表嗎？\n\n系統會先保留安全備份，再從列表移除。`))return;
+      if(!confirm(`請再次確認：要移除「${name}」嗎？`))return;
+      deleteButton.disabled=true;
+      try{
+        const {id:__removedId,...__originalData}=d;
+        await addDoc(collection(db,'adminDocuments'),{
+          ownerEmail:workspaceOwnerEmail(),
+          ownerUid:currentUser.uid,
+          type:'DELETED_BACKUP',
+          sourceType:d.type||'ISP',
+          sourceDocumentId:d.id,
+          studentName:d.studentName||'',
+          studentId:d.studentId||'',
+          backupData:__originalData,
+          deletedAt:serverTimestamp(),
+          createdAt:serverTimestamp(),
+          createdByUid:currentUser.uid,
+          createdByEmail:normalizedEmail(currentUser.email)
+        });
+        await deleteDoc(doc(db,'adminDocuments',d.id));
+        window.__adminDocumentsCache?.invalidate?.(workspaceOwnerEmail());
+        ispDocuments=ispDocuments.filter(item=>item.id!==d.id);
+        renderDocs();
+        alert('已從目前列表刪除；系統已先保留一份安全備份。');
+      }catch(error){
+        console.error(error);
+        deleteButton.disabled=false;
+        alert('刪除失敗，請確認帳號權限或稍後再試。');
+      }
+    };
+    list.appendChild(div);
+  }
+}
 async function loadDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,'adminDocuments'),where('ownerEmail','==',workspaceOwnerEmail()));const snap=await getDocs(q);ispDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(!item.type||item.type==='ISP')ispDocuments.push(item);});renderDocs();}
 $("ispSort").onchange=renderDocs;
 
