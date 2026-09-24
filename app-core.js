@@ -19,7 +19,27 @@ let ispDocuments=[];
 function admissionYear(value){const parsed=dateParts(value);return parsed?.y||0;}
 function createdSeconds(item){return item.createdAt?.seconds||0;}
 function sortedIspDocuments(){const mode=$("ispSort")?.value||"admission-desc";return [...ispDocuments].sort((a,b)=>{if(mode.startsWith("admission")){const yearA=admissionYear(a.form?.admissionDate),yearB=admissionYear(b.form?.admissionDate);if(!yearA||!yearB){if(yearA!==yearB)return yearA? -1:1;}else if(yearA!==yearB)return mode==="admission-asc"?yearA-yearB:yearB-yearA;return mode==="admission-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);}return mode==="created-asc"?createdSeconds(a)-createdSeconds(b):createdSeconds(b)-createdSeconds(a);});}
-function renderDocs(){const list=$("docList");list.innerHTML='';const items=sortedIspDocuments();if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';const year=admissionYear(d.form?.admissionDate);div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`入學年 ${year}`:'尚未填入學年'}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};const deleteButton=div.querySelector('.delete-doc');if(deleteButton)deleteButton.onclick=async()=>{const name=d.studentName||'未命名';if(!confirm(`確定要永久刪除「${name}」的新生 ISP 總表嗎？\n\n刪除後無法復原。`))return;if(!confirm(`請再次確認：真的要永久刪除「${name}」嗎？`))return;deleteButton.disabled=true;try{await deleteDoc(doc(db,'adminDocuments',d.id));ispDocuments=ispDocuments.filter(item=>item.id!==d.id);renderDocs();alert('已永久刪除，系統不會保留垃圾桶或封存副本。');}catch(error){console.error(error);deleteButton.disabled=false;alert('刪除失敗，請確認帳號權限或稍後再試。');}};list.appendChild(div);}}
+function renderDocs(){const list=$("docList");list.innerHTML='';const items=sortedIspDocuments();if(!items.length){list.innerHTML='<div class="doc-item">目前尚無新生 ISP 總表。</div>';return;}for(const d of items){const div=document.createElement('div');div.className='doc-item';const year=admissionYear(d.form?.admissionDate);div.innerHTML=`<div><strong>${esc(d.studentName||'未命名')}｜ISP</strong><div class="doc-meta">${esc(d.studentId||'尚未填學號')}　${year?`入學年 ${year}`:'尚未填入學年'}</div></div><div class="doc-actions"><button class="secondary open-doc">開啟</button>${currentAccess?.role==='assistant'?'':'<button class="delete-doc">刪除</button>'}</div>`;div.querySelector('.open-doc').onclick=()=>{fillForm(d);showPage('ispEditor')};const deleteButton=div.querySelector('.delete-doc');if(deleteButton)deleteButton.onclick=async()=>{const name=d.studentName||'未命名';if(!confirm(`確定要永久刪除「${name}」的新生 ISP 總表嗎？\n\n刪除後無法復原。`))return;if(!confirm(`請再次確認：真的要永久刪除「${name}」嗎？`))return;deleteButton.disabled=true;try{
+  const {id:__removedId,...__originalData}=d;
+  await addDoc(collection(db,'adminDocuments'),{
+    ownerEmail:workspaceOwnerEmail(),
+    ownerUid:currentUser.uid,
+    type:'DELETED_BACKUP',
+    sourceType:d.type||'ISP',
+    sourceDocumentId:d.id,
+    studentName:d.studentName||'',
+    studentId:d.studentId||'',
+    backupData:__originalData,
+    deletedAt:serverTimestamp(),
+    createdAt:serverTimestamp(),
+    createdByUid:currentUser.uid,
+    createdByEmail:normalizedEmail(currentUser.email)
+  });
+  await deleteDoc(doc(db,'adminDocuments',d.id));
+  ispDocuments=ispDocuments.filter(item=>item.id!==d.id);
+  renderDocs();
+  alert('已從目前列表刪除；系統已先保留一份安全備份。');
+}catch(error){console.error(error);deleteButton.disabled=false;alert('刪除失敗，請確認帳號權限或稍後再試。');}};list.appendChild(div);}}
 async function loadDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,'adminDocuments'),where('ownerEmail','==',workspaceOwnerEmail()));const snap=await getDocs(q);ispDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(!item.type||item.type==='ISP')ispDocuments.push(item);});renderDocs();}
 $("ispSort").onchange=renderDocs;
 
