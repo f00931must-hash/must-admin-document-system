@@ -26,7 +26,7 @@ async function resolveOwner(user){
   try{const s=await getDoc(doc(db,"administrativeAssistants",email));if(s.exists()&&s.data()?.enabled===true&&s.data()?.ownerEmail)return norm(s.data().ownerEmail).toLowerCase();}catch{}
   return email;
 }
-async function refreshDocs(){if(!ownerEmail)return;try{const snap=await getDocs(query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail)));docs=snap.docs.map(x=>({id:x.id,...x.data()}));applyAll();}catch(e){console.warn("ISP filter load failed",e);}}
+async function refreshDocs(){if(!ownerEmail)return;try{docs=await window.__adminDocumentsCache.getOwnerDocs(ownerEmail);applyAll();}catch(e){console.warn("ISP filter load failed",e);}}
 
 function totalDocForNode(node){const name=(node.querySelector("strong")?.textContent||"").split("｜")[0].trim();const meta=node.querySelector(".doc-meta")?.textContent||"";const studentId=meta.trim().split(/\s+/)[0];return docs.find(d=>(!d.type||d.type==="ISP")&&((studentId&&norm(d.studentId)===studentId)||normName(d.studentName)===normName(name)));}
 function ensureTotalFilters(){const head=$("mine")?.querySelector(".page-head");if(!head||$("ispClassFilter"))return;const wrap=document.createElement("div");wrap.className="sort-control";wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";wrap.innerHTML='<label>科系篩選<select id="ispClassFilter"><option value="">全部科系</option></select></label><label>年級篩選<select id="ispGradeFilter"><option value="">全部年級</option></select></label>';head.insertBefore(wrap,head.querySelector(".sort-control")||null);wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applyTotalFilters));}
