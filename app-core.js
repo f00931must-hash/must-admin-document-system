@@ -406,6 +406,26 @@ function attachUndoButton(button){
   return undoButton;
 }
 
+async function requestIspAi(body,{retryStatuses=[429,502,503,504],retryDelay=1500}={}){
+  let lastPayload={},lastStatus=0;
+  for(let attempt=1;attempt<=2;attempt++){
+    const response=await fetch(ISP_AI_ENDPOINT,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    });
+    let payload={};try{payload=await response.json();}catch{}
+    if(response.ok)return payload;
+    lastPayload=payload;lastStatus=response.status;
+    if(attempt===1&&retryStatuses.includes(response.status)){
+      await new Promise(resolve=>setTimeout(resolve,retryDelay));
+      continue;
+    }
+    throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+  }
+  throw new Error(lastPayload?.error||lastPayload?.message||`AI 服務暫時無法使用（${lastStatus}）`);
+}
+
 document.querySelectorAll(".ai-polish-btn").forEach(button=>{
   const undoButton=attachUndoButton(button);
 
@@ -417,14 +437,7 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
     button.disabled=true; button.textContent="AI 潤飾中…";
     try{
       const requestPolish=async forceRewrite=>{
-        const response=await fetch(ISP_AI_ENDPOINT,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({text:original,mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"})
-        });
-        let payload={};
-        try{payload=await response.json();}catch{}
-        if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+        const payload=await requestIspAi({text:original,mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"});
         return getIspAiText(payload);
       };
       let polished=await requestPolish(false);
@@ -456,9 +469,7 @@ document.querySelectorAll(".ai-generate-btn").forEach(button=>{
     const oldLabel=button.textContent;
     button.disabled=true;button.textContent="AI 產生中…";
     try{
-      const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:source,mode:button.dataset.aiMode,documentType:"ISP"})});
-      let payload={};try{payload=await response.json();}catch{}
-      if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+      const payload=await requestIspAi({text:source,mode:button.dataset.aiMode,documentType:"ISP"});
       const generated=getIspAiText(payload);
       if(!generated)throw new Error("AI 沒有回傳可用內容");
       undoButton.dataset.original=original;
@@ -491,9 +502,7 @@ async function requestSemesterIspAi(form,kind){
   const instruction=kind==="needs"
     ?"請依據以下本學期學生能力現況與評估，撰寫一段完整的『學生需求評估』。內容應統整學生整體狀況、主要學習或適應需求，並寫出任課老師在課堂上可留意或協助的事項。使用正式、客觀、自然的繁體中文，不得使用標題、編號、項目符號或列點，不可新增資料中沒有的診斷、能力或事件。只輸出一個完整段落。"
     :"請依據以下本學期學生能力現況、評估及需求，列出資源教室本學期將實際採取的特教支持服務及策略。每一點要結合學生的具體狀況與相對應措施，例如因學科困難而協調任課老師提供課後輔導，或持續關懷出席與課業表現。避免只重述學生狀況，也不要寫成空泛口號。使用正式、客觀、可執行的繁體中文，列出有依據且必要的 2 至 6 點，不可虛構。只輸出列點，不要標題。";
-  const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:`${instruction}\n\n【僅限目前學期 ISP 表單資料】\n${source}`,mode:"summary",section:kind==="needs"?"學期 ISP－學生需求評估":"學期 ISP－特教支持服務及策略",forceRewrite:true,documentType:"SEMESTER_ISP"})});
-  let payload={};try{payload=await response.json();}catch{}
-  if(!response.ok)throw new Error(payload?.error||payload?.message||`AI 服務暫時無法使用（${response.status}）`);
+  const payload=await requestIspAi({text:`${instruction}\n\n【僅限目前學期 ISP 表單資料】\n${source}`,mode:"summary",section:kind==="needs"?"學期 ISP－學生需求評估":"學期 ISP－特教支持服務及策略",forceRewrite:true,documentType:"SEMESTER_ISP"});
   const result=kind==="needs"?cleanSemesterNeedsAssessment(getIspAiText(payload)):cleanSemesterStrategies(getIspAiText(payload));
   if(!result)throw new Error("AI 沒有回傳可用內容");
   return result;
