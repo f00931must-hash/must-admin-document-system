@@ -86,6 +86,95 @@ async function persistExactSupports(snapshot){
   for(const [k,v] of Object.entries(snapshot))patch[`form.${k}`]=v;
   try{await updateDoc(doc(db,"adminDocuments",id),patch);}catch(e){console.warn("semester support exact save failed",e);}
 }
+function semesterClassDisplay(f){
+  const dept=norm(f.department).replace(/系$/u,"");
+  const grade=norm(f.studentGrade);
+  let cls=norm(f.studentClass);
+  if(grade&&cls.startsWith(grade))cls=cls.slice(grade.length);
+  cls=cls.replace(/^年級/u,"").trim();
+  return `${dept}${grade}${cls}`.trim();
+}
+function patchSemesterWordLayout(zip,data){
+  const file=zip.file("word/document.xml");if(!file)return;
+  const NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const XMLNS="http://www.w3.org/XML/1998/namespace";
+  const xml=new DOMParser().parseFromString(file.asText(),"application/xml");
+  const compact=s=>String(s||"").replace(/[\s　]/g,"");
+  const textOf=node=>[...node.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
+
+  const elementChildren=(node,name)=>[...node.childNodes].filter(n=>n.nodeType===1&&n.namespaceURI===NS&&(!name||n.localName===name));
+  const nextCell=tc=>{
+    let n=tc?.nextSibling||null;
+    while(n){if(n.nodeType===1&&n.namespaceURI===NS&&n.localName==="tc")return n;n=n.nextSibling;}
+    return null;
+  };
+  function setCellText(tc,text,{bold=false,size=22,center=false}={}){
+    if(!tc)return;
+    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
+    const p=xml.createElementNS(NS,"w:p");
+    if(center){
+      const pPr=xml.createElementNS(NS,"w:pPr");
+      const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val","center");
+      pPr.appendChild(jc);p.appendChild(pPr);
+    }
+    const r=xml.createElementNS(NS,"w:r"),rPr=xml.createElementNS(NS,"w:rPr");
+    const fonts=xml.createElementNS(NS,"w:rFonts");
+    fonts.setAttributeNS(NS,"w:ascii","DFKai-SB");fonts.setAttributeNS(NS,"w:hAnsi","DFKai-SB");fonts.setAttributeNS(NS,"w:eastAsia","標楷體");
+    rPr.appendChild(fonts);
+    if(bold)rPr.appendChild(xml.createElementNS(NS,"w:b"));
+    const sz=xml.createElementNS(NS,"w:sz");sz.setAttributeNS(NS,"w:val",String(size));rPr.appendChild(sz);
+    const szCs=xml.createElementNS(NS,"w:szCs");szCs.setAttributeNS(NS,"w:val",String(size));rPr.appendChild(szCs);
+    r.appendChild(rPr);
+    const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=String(text||"");
+    r.appendChild(t);p.appendChild(r);tc.appendChild(p);
+  }
+  function findCellByLabel(label){
+    return [...xml.getElementsByTagNameNS(NS,"tc")].find(tc=>compact(textOf(tc)).includes(compact(label)))||null;
+  }
+  function setRightCell(label,text,opts){
+    const labelCell=findCellByLabel(label);if(!labelCell)return;
+    setCellText(nextCell(labelCell),text,opts);
+  }
+  function clearFixedRowHeightForLabels(labels){
+    const rows=[...xml.getElementsByTagNameNS(NS,"tr")];
+    for(const row of rows){
+      const txt=compact(textOf(row));
+      if(!labels.some(label=>txt.includes(compact(label))))continue;
+      const trPr=elementChildren(row,"trPr")[0];if(!trPr)continue;
+      elementChildren(trPr,"trHeight").forEach(n=>trPr.removeChild(n));
+    }
+  }
+
+  setRightCell("系級",data.classDisplay||"",{center:true,size:22});
+  setRightCell("綜合評估學生優弱勢能力",data.strengthSummary||"",{size:22});
+  setRightCell("現況分析",data.analysisSummary||"",{size:22});
+
+  // 日期有些母版不是表格欄位，直接尋找包含「日期：」的段落補值。
+  const fillDate=norm(data.fillDate||data.fillDateText);
+  if(fillDate){
+    const paragraphs=[...xml.getElementsByTagNameNS(NS,"p")];
+    const p=paragraphs.find(x=>compact(textOf(x)).startsWith("日期：")||compact(textOf(x))==="日期:");
+    if(p){
+      const tc=p.parentNode?.localName==="tc"?p.parentNode:null;
+      if(tc){
+        setCellText(tc,`日期：${fillDate}`,{size:22});
+      }else{
+        [...p.childNodes].forEach(n=>p.removeChild(n));
+        const rr=xml.createElementNS(NS,"w:r"),tt=xml.createElementNS(NS,"w:t");
+        tt.textContent=`日期：${fillDate}`;rr.appendChild(tt);p.appendChild(rr);
+      }
+    }
+  }
+
+  clearFixedRowHeightForLabels([
+    "健康狀況","感官功能","知覺動作","認知能力","溝通能力","學業能力",
+    "生活自理能力","社會化及情緒行為能力",
+    "綜合評估學生優弱勢能力","現況分析","學生需求評估"
+  ]);
+
+  zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
+}
+
 function patchStaticCheckboxes(zip,selectedByName){
   const f=zip.file("word/document.xml");if(!f)return;
   const xml=new DOMParser().parseFromString(f.asText(),"application/xml");
@@ -120,7 +209,7 @@ async function downloadFixed(event){
     if(!response.ok)throw new Error("無法讀取新版學期 ISP Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
-    const data={...f};
+    const data={...f,classDisplay:semesterClassDisplay(f),fillDateText:norm(f.fillDate),strengthSummary:norm(f.strengthSummary),analysisSummary:norm(f.analysisSummary)};
     for(const [name,options] of Object.entries(supportConfig)){
       const values=Array.isArray(f[name])?f[name]:[];
       const checks=options.map(o=>`${values.includes(o)?"■":"□"}${o}`).join("\n");
@@ -128,6 +217,7 @@ async function downloadFixed(event){
     }
     word.render(data);
     patchStaticCheckboxes(word.getZip(),f);
+    patchSemesterWordLayout(word.getZip(),data);
     const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(f.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
     saveAs(blob,`${safe}_${f.academicYear||""}學年度第${f.semester||""}學期_ISP.docx`);
@@ -140,4 +230,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v2.3.3 loaded");
+console.log("Semester ISP checkbox/export fix v2.4.0 loaded");
