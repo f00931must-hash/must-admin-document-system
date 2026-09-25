@@ -20,11 +20,17 @@ function teacherClassDisplay(department,studentClass){
   if(!cls)return dept;
   return cls.startsWith(dept)?cls:dept+cls;
 }
+function setMainButtonState(hasSummary){
+  const button=$("generateSemesterTeacherSummaryBtn");if(!button)return;
+  button.dataset.hasSummary=hasSummary?"1":"0";
+  button.textContent=hasSummary?"查看任師摘要":"產生任課老師 ISP 摘要";
+}
 function clearSummary(){
   for(const id of ["semesterTeacherSummaryDepartment","semesterTeacherSummaryClass","semesterTeacherSummaryStudentName","semesterTeacherSummaryDisability","semesterTeacherSummaryAdvisor","semesterTeacherSummaryCounselor","semesterTeacherSummaryExtension","semesterTeacherSummaryStatus","semesterTeacherSummaryStrategies"]){
     const el=$(id);if(el)el.value="";
   }
   $("semesterTeacherIspSummaryPanel")?.classList.add("hidden");
+  setMainButtonState(false);
 }
 function getSummaryData(){
   const status=norm($("semesterTeacherSummaryStatus")?.value),strategies=norm($("semesterTeacherSummaryStrategies")?.value);
@@ -53,7 +59,9 @@ function loadSummary(data){
   $("semesterTeacherSummaryExtension").value=data.counselorExtension||"";
   $("semesterTeacherSummaryStatus").value=data.status||"";
   $("semesterTeacherSummaryStrategies").value=data.strategies||"";
-  if(data.status&&data.strategies)$("semesterTeacherIspSummaryPanel")?.classList.remove("hidden");
+  const ready=!!(data.status&&data.strategies);
+  setMainButtonState(ready);
+  if(ready)$("semesterTeacherIspSummaryPanel")?.classList.remove("hidden");
 }
 async function persistSummaryNow(){
   const form=$("semesterIspForm"),data=getSummaryData();if(!form||!data)return;
@@ -73,7 +81,10 @@ async function generate({force=false}={}){
   const form=$("semesterIspForm"),panel=$("semesterTeacherIspSummaryPanel");if(!form||!panel)return;
   const existing=getSummaryData();
   if(existing?.status&&existing?.strategies&&!force){
-    panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});return;
+    panel.classList.remove("hidden");
+    setMainButtonState(true);
+    panel.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
   }
   const f=serialize(form),base=await baseIsp(f.studentName,f.department);
   $("semesterTeacherSummaryDepartment").value=f.department||"";
@@ -92,6 +103,7 @@ async function generate({force=false}={}){
     const result=await Promise.all([ask(ss||ts,"status"),ask(ts||ss,"strategies")]);
     $("semesterTeacherSummaryStatus").value=result[0];
     $("semesterTeacherSummaryStrategies").value=result[1];
+    setMainButtonState(true);
     await persistSummaryNow();
   }catch(e){console.error(e);alert(e?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
   finally{if(b){b.disabled=false;b.textContent=old;}}
@@ -121,4 +133,4 @@ async function downloadSummaryData(summary){
   }catch(e){console.error(e);alert("Word 產生失敗："+(e?.message||e));}
 }
 async function download(){return downloadSummaryData(getSummaryData());}
-$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("closeSemesterTeacherSummaryBtn")?.addEventListener("click",()=>$("semesterTeacherIspSummaryPanel")?.classList.add("hidden"));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.2.0 loaded");
+$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.3.0 loaded");
