@@ -268,7 +268,7 @@ ${markMany(f.hearingDevice,"助聽器")}助聽器 ${markMany(f.hearingDevice,"�
     physicalSymptomsLine1:["癲癇","心臟病","腦性麻痺","妥瑞症","氣喘病","高血壓"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
     physicalSymptomsLine2:["低血壓","糖尿病","便溺失禁","蠶豆症","骨骼易脆","腦膜炎"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
     physicalSymptomsLine3:["脊柱側彎","精神疾病","甲狀腺機能低下","甲狀腺機能亢進"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　"),
-    physicalSymptomsLine4:`${markMany(f.physicalSymptoms,"惡性腫瘤")}惡性腫瘤${Array.isArray(f.physicalSymptoms)&&f.physicalSymptoms.includes("惡性腫瘤")&&f.malignantTumorName?`，${f.malignantTumorName}`:""}　${["地中海貧血","暈眩","長期失眠"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　")}`,
+    physicalSymptomsLine4:`${markMany(f.physicalSymptoms,"惡性腫瘤")}惡性腫瘤：${f.malignantTumorName||""}　${["地中海貧血","暈眩","長期失眠"].map(x=>`${markMany(f.physicalSymptoms,x)}${x}`).join("　")}`,
     physicalSymptomsLine5:`${markMany(f.physicalSymptoms,"過敏")}過敏，過敏原：${f.allergen||""}　${markMany(f.physicalSymptoms,"其他")}其他：${f.symptomsOther||""}`,
     medicationUseChecks:`${markOne(f.medicationUse,"無")}無　${markOne(f.medicationUse,"有")}有（請填寫下表）`,
     otherHealthBlock:`${markOne(f.otherHealthPresence,"無")}無　${markOne(f.otherHealthPresence,"有")}有，請說明：${f.otherHealthDescription||""}`,
@@ -654,11 +654,19 @@ function patchNewbornIspWordLayout(zip,data){
     // 12pt 中文約 240 twips／字；「通訊地址：」5 字，使用懸掛縮排讓自動換行對齊地址首字。
     replaceBlock("就學期間通訊（",addressLines,[
       {},
-      // 通訊地址第二行：左縮排 4.9 cm（Word twips 約 2778）
-      {left:2778,hanging:2778},
+      // 「通訊地址：」5 個全形字寬約 1200 twips；配合表格儲存格位置後，頁面尺規約落在 4.9 cm。
+      {left:1200,hanging:1200},
       {left:720,hanging:720}
     ]);
   }
+
+  // 健康狀況「身體特殊症狀」下方勾選行，與標題中的「身」字起點對齊。
+  // 「（一）」約 3 個全形字寬，使用 720 twips 相對縮排。
+  const symptomParagraphs=[...xml.getElementsByTagNameNS(NS,"p")].filter(p=>{
+    const txt=textOf(p);
+    return ["癲癇","低血壓","脊柱側彎","惡性腫瘤","過敏"].some(key=>txt.includes(key));
+  });
+  symptomParagraphs.forEach(p=>setIndent(p,720,0));
 
   const certLines=String(data.certificateBlock||"").split("\n");
   if(certLines.length>=4){
