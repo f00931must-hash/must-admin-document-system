@@ -1,6 +1,6 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 const app=getApp(),auth=getAuth(app),db=getFirestore(app);
 const AI_ENDPOINT="https://must-isp-ai-697793258377.asia-east1.run.app/ai/isp-summary";
 const $=id=>document.getElementById(id),norm=v=>String(v??"").trim(),normName=v=>norm(v).replace(/[\\s　]+/g,"");
@@ -53,7 +53,22 @@ function loadSummary(data){
   $("semesterTeacherSummaryExtension").value=data.counselorExtension||"";
   $("semesterTeacherSummaryStatus").value=data.status||"";
   $("semesterTeacherSummaryStrategies").value=data.strategies||"";
+  if(data.status&&data.strategies)$("semesterTeacherIspSummaryPanel")?.classList.remove("hidden");
 }
+async function persistSummaryNow(){
+  const form=$("semesterIspForm"),data=getSummaryData();if(!form||!data)return;
+  const id=$("semesterDocId")?.value;
+  if(id){
+    try{
+      await updateDoc(doc(db,"adminDocuments",id),{teacherSummary:data,updatedAt:serverTimestamp()});
+      const owner=await ownerEmail();window.__adminDocumentsCache?.invalidate?.(owner);
+      return true;
+    }catch(error){console.warn("teacher summary immediate save failed",error);return false;}
+  }
+  // 尚未建立學期文件時，直接走既有「儲存學期 ISP」流程，讓摘要與表單一起建立。
+  try{form.requestSubmit();return true;}catch(error){console.warn("teacher summary new document save failed",error);return false;}
+}
+
 async function generate({force=false}={}){
   const form=$("semesterIspForm"),panel=$("semesterTeacherIspSummaryPanel");if(!form||!panel)return;
   const existing=getSummaryData();
@@ -77,8 +92,33 @@ async function generate({force=false}={}){
     const result=await Promise.all([ask(ss||ts,"status"),ask(ts||ss,"strategies")]);
     $("semesterTeacherSummaryStatus").value=result[0];
     $("semesterTeacherSummaryStrategies").value=result[1];
+    await persistSummaryNow();
   }catch(e){console.error(e);alert(e?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
   finally{if(b){b.disabled=false;b.textContent=old;}}
 }
-async function download(){try{if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");const status=norm($("semesterTeacherSummaryStatus").value),strategies=norm($("semesterTeacherSummaryStrategies").value);if(!status||!strategies)throw new Error("請先產生或填寫兩個摘要區塊");const counselorName=norm($("semesterTeacherSummaryCounselor").value).replace(/老師$/,""),counselorExtension=norm($("semesterTeacherSummaryExtension").value);if(!counselorName||!counselorExtension)throw new Error("請先填寫輔導老師姓名與分機");const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.1",{cache:"no-store"});if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");const zip=new window.PizZip(await res.arrayBuffer()),docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});const itemLines=text=>text.split(/\n+/).map(stripListPrefix).filter(Boolean),statusItems=itemLines(status),strategyItems=itemLines(strategies);if(statusItems.length!==5||strategyItems.length!==5)throw new Error("障礙現況與支持策略都必須各有 5 點，請確認列點內容");const data={department:norm($("semesterTeacherSummaryDepartment").value),studentClass:norm($("semesterTeacherSummaryClass").value),studentName:norm($("semesterTeacherSummaryStudentName").value),disabilityType:norm($("semesterTeacherSummaryDisability").value),advisorName:norm($("semesterTeacherSummaryAdvisor").value).replace(/老師$/,""),counselorName,counselorExtension};for(let i=1;i<=5;i++)data["status"+i]=[{text:statusItems[i-1]}];for(let i=1;i<=5;i++)data["strategy"+i]=[{text:strategyItems[i-1]}];docx.render(data);const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),safe=(data.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");window.saveAs(blob,safe+"_任課老師ISP摘要.docx");}catch(e){console.error(e);alert("Word 產生失敗："+(e?.message||e));}}
-$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("closeSemesterTeacherSummaryBtn")?.addEventListener("click",()=>$("semesterTeacherIspSummaryPanel")?.classList.add("hidden"));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary};console.log("Semester teacher ISP summary v1.1.0 loaded");
+async function downloadSummaryData(summary){
+  try{
+    const status=norm(summary?.status),strategies=norm(summary?.strategies);
+    if(!status||!strategies)throw new Error("這份學期 ISP 尚未產生任課老師摘要");
+    const counselorName=norm(summary?.counselorName).replace(/老師$/,""),counselorExtension=norm(summary?.counselorExtension);
+    if(!counselorName||!counselorExtension)throw new Error("任課老師摘要尚缺輔導老師姓名或分機");
+    if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
+    const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.1",{cache:"no-store"});
+    if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");
+    const zip=new window.PizZip(await res.arrayBuffer()),docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
+    const itemLines=text=>text.split(/\n+/).map(stripListPrefix).filter(Boolean),statusItems=itemLines(status),strategyItems=itemLines(strategies);
+    if(statusItems.length!==5||strategyItems.length!==5)throw new Error("障礙現況與支持策略都必須各有 5 點，請確認列點內容");
+    const data={
+      department:norm(summary?.department),studentClass:norm(summary?.studentClass),studentName:norm(summary?.studentName),
+      disabilityType:norm(summary?.disabilityType),advisorName:norm(summary?.advisorName).replace(/老師$/,""),
+      counselorName,counselorExtension
+    };
+    for(let i=1;i<=5;i++)data["status"+i]=[{text:statusItems[i-1]}];
+    for(let i=1;i<=5;i++)data["strategy"+i]=[{text:strategyItems[i-1]}];
+    docx.render(data);
+    const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),safe=(data.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
+    window.saveAs(blob,safe+"_任課老師ISP摘要.docx");
+  }catch(e){console.error(e);alert("Word 產生失敗："+(e?.message||e));}
+}
+async function download(){return downloadSummaryData(getSummaryData());}
+$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("closeSemesterTeacherSummaryBtn")?.addEventListener("click",()=>$("semesterTeacherIspSummaryPanel")?.classList.add("hidden"));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.2.0 loaded");
