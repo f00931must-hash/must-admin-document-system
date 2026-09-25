@@ -49,3 +49,7 @@
 .semester-copy-grid{margin:12px 0 16px}
 @media(max-width:900px){.semester-term-grid,.semester-copy-grid{grid-template-columns:repeat(4,minmax(80px,1fr))}}
 @media(max-width:600px){.semester-term-head{align-items:stretch;flex-direction:column}.semester-term-grid,.semester-copy-grid{grid-template-columns:repeat(2,minmax(100px,1fr))}}
+
+.teacher-summary-status{display:inline-block;padding:2px 7px;border-radius:999px;font-size:12px;font-weight:800;vertical-align:middle}
+.teacher-summary-status.ready{background:#e8f7ee;color:#18794e}
+.teacher-summary-status.missing{background:#f2f4f7;color:#667085}
