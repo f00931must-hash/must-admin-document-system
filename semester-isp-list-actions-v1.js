@@ -108,6 +108,23 @@ function enhanceList(){
     const actions=node.querySelector(".doc-actions");if(!actions||actions.dataset.semesterActions==="1")return;
     const record=recordForNode(node);if(!record)return;
     actions.dataset.semesterActions="1";
+    const summaryReady=!!(record.teacherSummary?.status&&record.teacherSummary?.strategies);
+    const meta=node.querySelector(".doc-meta");
+    if(meta&&!meta.querySelector(".teacher-summary-status")){
+      const badge=document.createElement("span");
+      badge.className="teacher-summary-status "+(summaryReady?"ready":"missing");
+      badge.textContent=summaryReady?"任師✓":"任師－";
+      badge.title=summaryReady?"已產生任課老師 ISP 摘要":"尚未產生任課老師 ISP 摘要";
+      meta.append("　",badge);
+    }
+    if(summaryReady){
+      const teacher=document.createElement("button");
+      teacher.type="button";teacher.className="secondary download-teacher-summary";
+      teacher.textContent="任師版";
+      teacher.title="下載任課老師 ISP 摘要";
+      teacher.onclick=()=>window.__semesterTeacherSummary?.downloadData?.(record.teacherSummary);
+      actions.appendChild(teacher);
+    }
     const copy=document.createElement("button");copy.type="button";copy.className="secondary copy-semester-doc";copy.textContent="複製";
     copy.onclick=()=>copyRecord(record,copy);
     actions.appendChild(copy);
@@ -151,4 +168,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.2.0 loaded");
+console.log("Semester ISP list actions/copy v1.3.0 loaded");
