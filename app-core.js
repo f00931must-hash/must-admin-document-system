@@ -385,24 +385,33 @@ function buildAiSource(mode,form=$("ispForm")){
   return formatFields(AI_NEEDS_FIELDS);
 }
 function attachUndoButton(button){
-  const buttonGroup=document.createElement("div");
-  buttonGroup.className="ai-button-group";
-  button.parentNode.insertBefore(buttonGroup,button);
-  buttonGroup.appendChild(button);
-  const undoButton=document.createElement("button");
-  undoButton.type="button";
-  undoButton.className="ai-undo-btn";
-  undoButton.textContent="↩ 還原";
-  undoButton.disabled=true;
-  buttonGroup.appendChild(undoButton);
-  undoButton.addEventListener("click",()=>{
-    const textarea=button.closest("form")?.querySelector(`[name="${button.dataset.aiTarget}"]`);
-    if(!textarea||typeof undoButton.dataset.original!=="string")return;
-    textarea.value=undoButton.dataset.original;
-    textarea.dispatchEvent(new Event("input",{bubbles:true}));
-    delete undoButton.dataset.original;
+  let buttonGroup=button.closest(".ai-button-group");
+  let undoButton=buttonGroup?.querySelector(".ai-undo-btn")||null;
+  if(!buttonGroup){
+    buttonGroup=document.createElement("div");
+    buttonGroup.className="ai-button-group";
+    button.parentNode.insertBefore(buttonGroup,button);
+    buttonGroup.appendChild(button);
+  }
+  if(!undoButton){
+    undoButton=document.createElement("button");
+    undoButton.type="button";
+    undoButton.className="ai-undo-btn";
+    undoButton.textContent="↩ 還原";
     undoButton.disabled=true;
-  });
+    buttonGroup.appendChild(undoButton);
+  }
+  if(undoButton.dataset.undoBound!=="1"){
+    undoButton.dataset.undoBound="1";
+    undoButton.addEventListener("click",()=>{
+      const textarea=button.closest("form")?.querySelector(`[name="${button.dataset.aiTarget}"]`);
+      if(!textarea||typeof undoButton.dataset.original!=="string")return;
+      textarea.value=undoButton.dataset.original;
+      textarea.dispatchEvent(new Event("input",{bubbles:true}));
+      delete undoButton.dataset.original;
+      undoButton.disabled=true;
+    });
+  }
   return undoButton;
 }
 
@@ -475,6 +484,39 @@ function enableDeselectableRadios(names){
   });
 }
 enableDeselectableRadios(["assistiveSource","assistiveCondition"]);
+
+document.querySelectorAll(".newborn-text-polish-btn").forEach(button=>{
+  const undoButton=attachUndoButton(button);
+  button.addEventListener("click",async()=>{
+    const form=button.closest("form")||$("ispForm");
+    const textarea=form?.querySelector(`[name="${button.dataset.aiTarget}"]`);
+    const original=textarea?.value.trim()||"";
+    if(!original){alert("請先輸入內容，再使用 AI 潤飾。");textarea?.focus();return;}
+    const oldLabel=button.textContent;
+    button.disabled=true;button.textContent="AI 潤飾中…";
+    try{
+      const payload=await requestIspAi({
+        text:original,
+        mode:"summary",
+        section:button.dataset.aiSection||"ISP 文字潤飾",
+        forceRewrite:true,
+        documentType:"ISP"
+      });
+      const polished=getIspAiText(payload);
+      if(!polished)throw new Error("AI 沒有回傳可用內容");
+      if(normalizedIspAiComparison(polished)===normalizedIspAiComparison(original)){
+        alert("AI 判斷目前內容已相當完整，沒有需要調整的地方。");
+        return;
+      }
+      undoButton.dataset.original=textarea.value;
+      textarea.value=polished;
+      textarea.dispatchEvent(new Event("input",{bubbles:true}));
+      undoButton.disabled=false;
+    }catch(error){
+      console.error(error);alert(error?.message||"AI 潤飾失敗，請稍後再試。");
+    }finally{button.disabled=false;button.textContent=oldLabel;}
+  });
+});
 
 document.querySelectorAll(".ai-polish-btn").forEach(button=>{
   const undoButton=attachUndoButton(button);
