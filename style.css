@@ -53,3 +53,21 @@
 .teacher-summary-status{display:inline-block;padding:2px 7px;border-radius:999px;font-size:12px;font-weight:800;vertical-align:middle}
 .teacher-summary-status.ready{background:#e8f7ee;color:#18794e}
 .teacher-summary-status.missing{background:#f2f4f7;color:#667085}
+
+.teacher-summary-panel{
+  background:#f7f3ff;
+  border:1.5px solid #c9b8f4;
+  box-shadow:0 8px 24px rgba(102,76,176,.08);
+}
+.teacher-summary-panel h3{
+  margin-top:0;
+  color:#5b3fa3;
+}
+.teacher-summary-panel .field-hint{
+  color:#6d5a95;
+}
+.teacher-summary-panel input,
+.teacher-summary-panel textarea{
+  background:#fff;
+  border-color:#d8cdf5;
+}
