@@ -25,3 +25,7 @@
 .doc-item.suspected-duplicate{border-color:#f0c36a;background:#fffdf6}
 .duplicate-badge{display:inline-block;margin-left:7px;padding:3px 7px;border-radius:999px;background:#fff2cc;color:#8a5a00;font-size:12px;font-weight:800;vertical-align:middle}
 .duplicate-reason{color:#9a6700;font-weight:700}
+
+.symptom-inline-detail{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.symptom-inline-detail .inline-detail-input{width:150px;min-width:110px;padding:4px 6px}
+@media(max-width:700px){.symptom-inline-detail{flex-wrap:wrap}.symptom-inline-detail .inline-detail-input{width:100%}}
