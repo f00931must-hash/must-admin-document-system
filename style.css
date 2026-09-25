@@ -71,3 +71,12 @@
   background:#fff;
   border-color:#d8cdf5;
 }
+
+.semester-import-newborn-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 12px}
+.semester-import-newborn-actions small{color:#667085}
+.import-newborn-candidates{display:grid;gap:8px;margin:14px 0}
+.import-candidate{text-align:left;justify-content:flex-start}
+.import-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.import-mode-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;text-align:left}
+.import-mode-grid small{font-weight:400;opacity:.82}
+@media(max-width:650px){.import-mode-grid{grid-template-columns:1fr}}
