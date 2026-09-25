@@ -426,6 +426,31 @@ async function requestIspAi(body,{retryStatuses=[429,502,503,504],retryDelay=150
   throw new Error(lastPayload?.error||lastPayload?.message||`AI 服務暫時無法使用（${lastStatus}）`);
 }
 
+function enableDeselectableRadios(names){
+  const targetNames=new Set(names);
+  document.querySelectorAll('input[type="radio"]').forEach(radio=>{
+    if(!targetNames.has(radio.name)||radio.dataset.deselectableRadio==="1")return;
+    radio.dataset.deselectableRadio="1";
+    let wasChecked=false;
+    radio.addEventListener("pointerdown",()=>{wasChecked=radio.checked;});
+    radio.addEventListener("click",event=>{
+      if(!wasChecked)return;
+      radio.checked=false;
+      wasChecked=false;
+      radio.dispatchEvent(new Event("change",{bubbles:true}));
+      event.preventDefault();
+    });
+    radio.addEventListener("keydown",event=>{
+      if((event.key===" "||event.key==="Enter")&&radio.checked){
+        event.preventDefault();
+        radio.checked=false;
+        radio.dispatchEvent(new Event("change",{bubbles:true}));
+      }
+    });
+  });
+}
+enableDeselectableRadios(["assistiveSource","assistiveCondition"]);
+
 document.querySelectorAll(".ai-polish-btn").forEach(button=>{
   const undoButton=attachUndoButton(button);
 
