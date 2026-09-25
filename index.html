@@ -28,7 +28,7 @@
 <label class="boxed">特教支持服務及策略<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="strategies" data-ai-target="serviceEvaluationSummary">✨ AI 自動產生支持策略</button></label>
 <label class="boxed">其他<textarea name="semesterOther" rows="4"></textarea></label>
 
-<section id="semesterTeacherIspSummaryPanel" class="boxed hidden">
+<section id="semesterTeacherIspSummaryPanel" class="boxed hidden teacher-summary-panel">
 <h3>任課老師 ISP 摘要預覽</h3>
 <p class="field-hint">此摘要會跟著目前這份學期 ISP 一起儲存；重新開啟後會自動帶回。只有按「重新 AI 產生」才會再次使用 AI。</p>
 <div class="official-grid cols-2">
@@ -38,7 +38,7 @@
 </div>
 <label>障礙現況（固定整理 5 點）<textarea id="semesterTeacherSummaryStatus" rows="9"></textarea></label>
 <label>特教支持服務及策略（固定整理 5 點）<textarea id="semesterTeacherSummaryStrategies" rows="9"></textarea></label>
-<div class="actions"><button type="button" id="regenerateSemesterTeacherSummaryBtn" class="secondary">重新 AI 產生</button><button type="button" id="downloadSemesterTeacherSummaryBtn" class="primary">下載任課老師版 Word</button><button type="button" id="closeSemesterTeacherSummaryBtn" class="secondary">關閉預覽</button></div>
+<div class="actions"><button type="button" id="regenerateSemesterTeacherSummaryBtn" class="secondary">重新 AI 產生</button><button type="button" id="downloadSemesterTeacherSummaryBtn" class="primary">下載任課老師版 Word</button></div>
 </section>
 
 <div class="actions sticky-actions"><button type="submit" class="primary">儲存學期 ISP</button><button type="button" id="downloadSemesterIspBtn" class="secondary">下載學期 ISP Word</button><button type="button" id="generateSemesterTeacherSummaryBtn" class="secondary">產生任課老師 ISP 摘要</button></div>
