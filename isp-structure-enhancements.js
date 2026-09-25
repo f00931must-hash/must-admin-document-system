@@ -30,7 +30,24 @@ function totalDocForNode(node){const strong=node.querySelector("strong")?.textCo
 function enhanceTotalList(){ensureTotalSortOptions();const list=$("docList"),select=$("ispSort");if(!list||!select)return;const nodes=[...list.children].filter(n=>n.classList.contains("doc-item"));for(const node of nodes){const d=totalDocForNode(node);if(!d)continue;node.dataset.department=deptText(d.form?.department);const meta=node.querySelector(".doc-meta");if(meta&&node.dataset.department&&!meta.dataset.deptAdded){meta.insertAdjacentText("beforeend",`　科系 ${node.dataset.department}`);meta.dataset.deptAdded="1";}}
   if(!select.value.startsWith("department"))return;nodes.sort((a,b)=>{const da=a.dataset.department||"～",dbb=b.dataset.department||"～";const cmp=da.localeCompare(dbb,"zh-Hant");return select.value==="department-desc"?-cmp:cmp;}).forEach(n=>list.appendChild(n));}
 
-function ensureSemesterFields(){const form=$("semesterIspForm");if(!form)return;const top=form.querySelector(".official-section .official-grid");if(top&&!form.elements.studentGrade){const label=document.createElement("label");label.innerHTML='年級<select name="studentGrade" required><option value="">請選擇</option><option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option><option value="四">四年級</option><option value="五">五年級</option><option value="研一">研一</option><option value="研二">研二</option></select>';const classInput=form.elements.studentClass?.closest("label");top.insertBefore(label,classInput||null);}
+function ensureSemesterNarrativeFields(){
+  const form=$("semesterIspForm");if(!form)return;
+  const strengthGrid=$("semesterStrengthGrid"),analysisGrid=$("semesterAnalysisGrid");
+  if(strengthGrid&&!form.elements.strengthSummary){
+    const wrap=document.createElement("label");
+    wrap.className="boxed semester-summary-box";
+    wrap.innerHTML='綜合評估－學生優弱勢能力摘要<textarea name="strengthSummary" rows="4" placeholder="可自行填寫，或依上方勾選與學生能力現況由 AI 產生"></textarea><button type="button" class="semester-summary-ai-btn" data-summary-kind="strength" data-ai-target="strengthSummary">✨ AI 產生摘要</button>';
+    strengthGrid.closest("fieldset")?.insertAdjacentElement("afterend",wrap);
+  }
+  if(analysisGrid&&!form.elements.analysisSummary){
+    const wrap=document.createElement("label");
+    wrap.className="boxed semester-summary-box";
+    wrap.innerHTML='現況分析摘要<textarea name="analysisSummary" rows="4" placeholder="可自行填寫，或依上方評估結果與學生能力現況由 AI 產生"></textarea><button type="button" class="semester-summary-ai-btn" data-summary-kind="analysis" data-ai-target="analysisSummary">✨ AI 產生摘要</button>';
+    analysisGrid.closest("fieldset")?.insertAdjacentElement("afterend",wrap);
+  }
+}
+
+function ensureSemesterFields(){const form=$("semesterIspForm");if(!form)return;ensureSemesterNarrativeFields();const top=form.querySelector(".official-section .official-grid");if(top&&!form.elements.studentGrade){const label=document.createElement("label");label.innerHTML='年級<select name="studentGrade" required><option value="">請選擇</option><option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option><option value="四">四年級</option><option value="五">五年級</option><option value="研一">研一</option><option value="研二">研二</option></select>';const classInput=form.elements.studentClass?.closest("label");top.insertBefore(label,classInput||null);}
   const abilityGrid=form.querySelector(".semester-ability-grid");if(abilityGrid&&!form.elements.courseCredits){const label=document.createElement("label");label.innerHTML='修課學分<textarea name="courseCredits" rows="3" placeholder="例如：本學期修習 24 學分，目前修課情形穩定"></textarea><button type="button" class="ai-polish-btn semester-extra-polish" data-ai-target="courseCredits" data-ai-section="修課學分">✨ AI 潤飾此格</button>';abilityGrid.appendChild(label);bindExtraPolish(label.querySelector(".semester-extra-polish"));}}
 function bindExtraPolish(button){if(!button||button.dataset.bound)return;button.dataset.bound="1";const undo=document.createElement("button");undo.type="button";undo.className="ai-undo-btn";undo.textContent="↩ 還原";undo.disabled=true;const group=document.createElement("div");group.className="ai-button-group";button.parentNode.insertBefore(group,button);group.append(button,undo);button.addEventListener("click",async()=>{const form=button.closest("form"),ta=form?.querySelector('[name="courseCredits"]'),original=ta?.value.trim()||"";if(!original)return alert("請先輸入內容，再使用 AI 潤飾。");button.disabled=true;const old=button.textContent;button.textContent="AI 潤飾中…";try{const r=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:original,mode:"summary",section:"修課學分",forceRewrite:true,documentType:"SEMESTER_ISP"})});const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||`AI 服務暫時無法使用（${r.status}）`);const out=norm(p.polished||p.result||p.text);if(!out)throw new Error("AI 沒有回傳可用內容");undo.dataset.original=original;ta.value=out;ta.dispatchEvent(new Event("input",{bubbles:true}));undo.disabled=false;}catch(e){alert(e.message||"AI 潤飾失敗");}finally{button.disabled=false;button.textContent=old;}});undo.onclick=()=>{if(undo.dataset.original!==undefined){button.closest("form").elements.courseCredits.value=undo.dataset.original;undo.disabled=true;delete undo.dataset.original;}};}
 
@@ -49,6 +66,40 @@ $("generateTeacherSummaryBtn")?.addEventListener("click",()=>setTimeout(()=>{con
 const semesterNeedFields=["abilityHealth","abilitySensory","abilityMotor","abilityCognitive","abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional","courseCredits"];
 function semesterAiSource(form,kind){const f=serialize(form),lines=[];for(const name of semesterNeedFields){const el=form.elements[name],value=norm(f[name]);if(value)lines.push(`${el?.closest("label")?.childNodes?.[0]?.textContent?.trim()||name}：${value}`);}form.querySelectorAll("#semesterStrengthGrid fieldset,#semesterAnalysisGrid fieldset").forEach(fs=>{const checked=fs.querySelector('input[type="radio"]:checked');if(checked)lines.push(`${fs.querySelector("legend")?.textContent||"評估"}：${checked.value}`);});if(kind==="strategies"){if(norm(f.studentNeedsAssessment))lines.push(`學生需求評估：${f.studentNeedsAssessment}`);const supportNames=["learningSupport","emotionalSupport","environmentSupport","academicPlanningSupport","careerSupport","adminSupport","supportAdjustment"];for(const name of supportNames){const values=f[name]||[];if(values.length)lines.push(`${name}：${values.join("、")}`);const note=norm(f[`${name}Note`]);if(note)lines.push(`${name}說明：${note}`);}}return lines.join("\n");}
 function setUndo(button,original){const group=button.closest(".ai-button-group")||button.parentElement;const undo=group?.querySelector(".ai-undo-btn");if(undo){undo.dataset.original=original;undo.disabled=false;}}
+document.addEventListener("click",async event=>{
+  const button=event.target.closest?.(".semester-summary-ai-btn");if(!button)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const form=button.closest("form"),target=form?.elements?.[button.dataset.aiTarget];if(!form||!target)return;
+  const kind=button.dataset.summaryKind,f=serialize(form),lines=[];
+  for(const name of semesterNeedFields){
+    const value=norm(f[name]);if(value){
+      const el=form.elements[name],label=el?.closest("label")?.childNodes?.[0]?.textContent?.trim()||name;
+      lines.push(`${label}：${value}`);
+    }
+  }
+  const selector=kind==="strength"?"#semesterStrengthGrid fieldset":"#semesterAnalysisGrid fieldset";
+  form.querySelectorAll(selector).forEach(fs=>{
+    const checked=fs.querySelector('input[type="radio"]:checked');
+    if(checked)lines.push(`${fs.querySelector("legend")?.textContent||"評估"}：${checked.value}`);
+  });
+  if(!lines.length)return alert("請先填寫學生能力現況或完成上方評估，再使用 AI。");
+  const instruction=kind==="strength"
+    ?"請根據以下學生能力現況與優弱勢評估，撰寫一段正式、客觀、精簡的「綜合評估－學生優弱勢能力摘要」。整合主要優勢與待加強處，不逐欄重複、不虛構，約 80 至 150 字，使用繁體中文，只輸出摘要內容。"
+    :"請根據以下學生能力現況與現況分析評估，撰寫一段正式、客觀、精簡的「現況分析摘要」。整合學生目前需要協助與可獨立完成的面向，不逐欄重複、不虛構，約 80 至 150 字，使用繁體中文，只輸出摘要內容。";
+  const original=target.value||"",old=button.textContent;button.disabled=true;button.textContent="AI 產生中…";
+  try{
+    const r=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      text:`${instruction}\n\n【目前學期資料】\n${lines.join("\n")}`,
+      mode:"summary",section:kind==="strength"?"學期 ISP－學生優弱勢能力摘要":"學期 ISP－現況分析摘要",
+      forceRewrite:true,documentType:"SEMESTER_ISP"
+    })});
+    const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||`AI 服務暫時無法使用（${r.status}）`);
+    const out=norm(p.polished||p.polishedText||p.result||p.text);if(!out)throw new Error("AI 沒有回傳可用內容");
+    target.value=out;target.dispatchEvent(new Event("input",{bubbles:true}));
+  }catch(error){console.error(error);alert(error.message||"AI 產生失敗，請稍後再試。");}
+  finally{button.disabled=false;button.textContent=old;}
+},true);
+
 document.addEventListener("click",async event=>{const button=event.target.closest?.(".semester-ai-generate-btn");if(!button)return;event.preventDefault();event.stopImmediatePropagation();const form=button.closest("form"),ta=form?.querySelector(`[name="${button.dataset.aiTarget}"]`);if(!form||!ta)return;const source=semesterAiSource(form,button.dataset.aiKind);if(!source)return alert("目前沒有足夠的已填資料，請先填寫學生能力現況及評估欄位。");const original=ta.value||"",old=button.textContent;button.disabled=true;button.textContent="AI 產生中…";try{let body;if(button.dataset.aiKind==="needs"){body={text:source,mode:"needs-assessment",documentType:"SEMESTER_ISP"};}else{const instruction="請依據以下本學期學生能力現況、評估及需求，列出資源教室本學期將實際採取的特教支持服務及策略。每一點要結合學生的具體狀況與相對應措施，使用正式、客觀、可執行的繁體中文，列出有依據且必要的 2 至 6 點，不可虛構。只輸出列點，不要標題。";body={text:`${instruction}\n\n【僅限目前學期 ISP 表單資料】\n${source}`,mode:"summary",section:"學期 ISP－特教支持服務及策略",forceRewrite:true,documentType:"SEMESTER_ISP"};}const r=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||`AI 服務暫時無法使用（${r.status}）`);let out=norm(p.polished||p.result||p.text);if(!out)throw new Error("AI 沒有回傳可用內容");if(button.dataset.aiKind==="strategies"){let parts=out.split(/\n+/).map(x=>x.trim()).filter(Boolean);if(parts.length<2)parts=out.split(/[。；]\s*/).filter(Boolean).map(x=>/[。！？]$/.test(x)?x:x+"。");out=parts.slice(0,6).map((x,i)=>`${i+1}. ${x.replace(/^\s*(?:\d+|[一二三四五六七八九十]+)[.、）]\s*/,"")}`).join("\n");}setUndo(button,original);ta.value=out;ta.dispatchEvent(new Event("input",{bubbles:true}));}catch(e){console.error(e);alert(e.message||"AI 產生失敗，請稍後再試。");}finally{button.disabled=false;button.textContent=old;}},true);
 
 function marks(values,options,note=""){const set=new Set(Array.isArray(values)?values:[]);const lines=options.map(x=>`${set.has(x)?"■":"□"} ${x}`);if(note)lines.push(`說明：${note}`);return lines.join("\n");}
