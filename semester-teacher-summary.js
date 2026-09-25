@@ -133,4 +133,8 @@ async function downloadSummaryData(summary){
   }catch(e){console.error(e);alert("Word 產生失敗："+(e?.message||e));}
 }
 async function download(){return downloadSummaryData(getSummaryData());}
-$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.3.0 loaded");
+$("semesterBackToTopBtn")?.addEventListener("click",()=>{
+  const target=$("semesterTermNavigator")||$("semesterIspEditor")||$("semesterIspForm");
+  target?.scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.3.1 loaded");
