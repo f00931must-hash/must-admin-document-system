@@ -431,20 +431,45 @@ function enableDeselectableRadios(names){
   document.querySelectorAll('input[type="radio"]').forEach(radio=>{
     if(!targetNames.has(radio.name)||radio.dataset.deselectableRadio==="1")return;
     radio.dataset.deselectableRadio="1";
-    let wasChecked=false;
-    radio.addEventListener("pointerdown",()=>{wasChecked=radio.checked;});
-    radio.addEventListener("click",event=>{
-      if(!wasChecked)return;
-      radio.checked=false;
-      wasChecked=false;
-      radio.dispatchEvent(new Event("change",{bubbles:true}));
-      event.preventDefault();
+    let wasCheckedBeforeClick=false;
+
+    const remember=()=>{wasCheckedBeforeClick=radio.checked;};
+    radio.addEventListener("pointerdown",remember,true);
+    radio.addEventListener("mousedown",remember,true);
+    radio.addEventListener("touchstart",remember,{capture:true,passive:true});
+
+    radio.addEventListener("click",()=>{
+      if(!wasCheckedBeforeClick){wasCheckedBeforeClick=false;return;}
+      wasCheckedBeforeClick=false;
+      setTimeout(()=>{
+        radio.checked=false;
+        radio.dispatchEvent(new Event("change",{bubbles:true}));
+        radio.dispatchEvent(new Event("input",{bubbles:true}));
+      },0);
     });
+
+    const label=radio.closest("label");
+    if(label){
+      label.addEventListener("pointerdown",event=>{
+        if(event.target!==radio)wasCheckedBeforeClick=radio.checked;
+      },true);
+      label.addEventListener("click",event=>{
+        if(event.target===radio||!wasCheckedBeforeClick)return;
+        wasCheckedBeforeClick=false;
+        setTimeout(()=>{
+          radio.checked=false;
+          radio.dispatchEvent(new Event("change",{bubbles:true}));
+          radio.dispatchEvent(new Event("input",{bubbles:true}));
+        },0);
+      },true);
+    }
+
     radio.addEventListener("keydown",event=>{
       if((event.key===" "||event.key==="Enter")&&radio.checked){
         event.preventDefault();
         radio.checked=false;
         radio.dispatchEvent(new Event("change",{bubbles:true}));
+        radio.dispatchEvent(new Event("input",{bubbles:true}));
       }
     });
   });
