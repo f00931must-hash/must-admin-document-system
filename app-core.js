@@ -14,7 +14,20 @@ function clearForm(){$("ispForm").reset();$("docId").value='';setTimeout(()=>win
 function fillForm(data){clearForm();$("docId").value=data.id||'';for(const el of $("ispForm").elements){if(!el.name)continue;const v=data.form?.[el.name];if(el.type==='checkbox')el.checked=Array.isArray(v)?v.includes(el.value):v===el.value;else if(el.type==='radio')el.checked=v===el.value;else if(v!==undefined)el.value=el.matches('[data-roc-date]')?rocInputDate(v):v??'';}setTimeout(()=>window.__newbornTeacherSummary?.load?.(data.teacherSummary||null),0);}
 async function openNewIspEditor(){const ok=await (window.__ispAutosave?.flush?.("new")??true);if(ok===false)return;clearForm();window.__ispAutosave?.reset?.();showPage('ispEditor');}
 $("loginBtn").onclick=()=>signInWithPopup(auth,provider);$("logoutBtn").onclick=()=>signOut(auth);$("newIspBtn").onclick=openNewIspEditor;if($("newIspListBtn"))$("newIspListBtn").onclick=openNewIspEditor;$("backBtn").onclick=async()=>{const ok=await (window.__ispAutosave?.flush?.("back")??true);if(ok===false)return;window.__ispAutosave?.reset?.();showPage('home')};
-document.querySelectorAll('.nav[data-view]').forEach(btn=>btn.onclick=async()=>{document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));btn.classList.add('active');showPage(btn.dataset.view);if(btn.dataset.view==='mine')await loadDocs();if(btn.dataset.view==='semesterIsp')await loadSemesterIspDocs();});
+document.querySelectorAll('.nav[data-view]').forEach(btn=>btn.onclick=async()=>{
+  document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  const view=btn.dataset.view;
+  if(view==='semesterIsp'){
+    const list=$("semesterIspList");
+    if(list)list.innerHTML='<div class="doc-item semester-list-loading">學期 ISP 資料載入中…</div>';
+    showPage(view);
+    await loadSemesterIspDocs();
+    return;
+  }
+  showPage(view);
+  if(view==='mine')await loadDocs();
+});
 $("ispForm").onsubmit=async e=>{
   e.preventDefault();
   if(!currentUser||!currentAccess||ispManualSubmitting)return;
@@ -168,7 +181,15 @@ $("newSemesterIspBtn").onclick=openNewSemesterIsp;
 $("newSemesterIspListBtn").onclick=openNewSemesterIsp;
 $("semesterIspBackBtn").onclick=async()=>{await loadSemesterIspDocs();showPage("semesterIsp");};
 let semesterIspDocuments=[];
-async function loadSemesterIspDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,"adminDocuments"),where("ownerEmail","==",workspaceOwnerEmail()));const snap=await getDocs(q);semesterIspDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(item.type==="SEMESTER_ISP")semesterIspDocuments.push(item);});semesterIspDocuments.sort((a,b)=>createdSeconds(b)-createdSeconds(a));renderSemesterIspDocs();}
+async function loadSemesterIspDocs(){
+  if(!currentUser||!currentAccess)return;
+  semesterIspDocuments=[];
+  const q=query(collection(db,"adminDocuments"),where("ownerEmail","==",workspaceOwnerEmail()));
+  const snap=await getDocs(q);
+  snap.forEach(s=>{const item={id:s.id,...s.data()};if(item.type==="SEMESTER_ISP")semesterIspDocuments.push(item);});
+  semesterIspDocuments.sort((a,b)=>createdSeconds(b)-createdSeconds(a));
+  renderSemesterIspDocs();
+}
 function renderSemesterIspDocs(){const list=$("semesterIspList");list.innerHTML="";if(!semesterIspDocuments.length){list.innerHTML='<div class="doc-item">目前尚無學期 ISP 表單。</div>';return;}for(const item of semesterIspDocuments){const f=item.form||{},div=document.createElement("div");div.className="doc-item";div.innerHTML=`<div><strong>${esc(item.studentName||"未命名")}｜${esc(f.academicYear||"未填")}學年度第${esc(f.semester||"未填")}學期</strong><div class="doc-meta">${esc(f.department||"")} ${esc(f.studentClass||"")}</div></div><div class="doc-actions"><button class="secondary open-semester-doc">開啟</button></div>`;div.querySelector(".open-semester-doc").onclick=()=>{fillSemesterIspForm(item);showPage("semesterIspEditor");};list.appendChild(div);}}
 $("semesterIspForm").onsubmit=async event=>{
   event.preventDefault();if(!currentUser||!currentAccess)return;
