@@ -108,13 +108,13 @@ function patchSemesterWordLayout(zip,data){
     while(n){if(n.nodeType===1&&n.namespaceURI===NS&&n.localName==="tc")return n;n=n.nextSibling;}
     return null;
   };
-  function setCellText(tc,text,{bold=false,size=22,center=false}={}){
+  function setCellText(tc,text,{bold=false,size=22,center=false,right=false}={}){
     if(!tc)return;
     elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
     const p=xml.createElementNS(NS,"w:p");
-    if(center){
+    if(center||right){
       const pPr=xml.createElementNS(NS,"w:pPr");
-      const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val","center");
+      const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val",right?"right":"center");
       pPr.appendChild(jc);p.appendChild(pPr);
     }
     const r=xml.createElementNS(NS,"w:r"),rPr=xml.createElementNS(NS,"w:rPr");
@@ -149,7 +149,7 @@ function patchSemesterWordLayout(zip,data){
   setRightCell("綜合評估學生優弱勢能力",data.strengthSummary||"",{size:22});
   setRightCell("現況分析",data.analysisSummary||"",{size:22});
 
-  // 日期有些母版不是表格欄位，直接尋找包含「日期：」的段落補值。
+  // 日期固定靠右，標楷體 11pt。
   const fillDate=norm(data.fillDate||data.fillDateText);
   if(fillDate){
     const paragraphs=[...xml.getElementsByTagNameNS(NS,"p")];
@@ -157,11 +157,18 @@ function patchSemesterWordLayout(zip,data){
     if(p){
       const tc=p.parentNode?.localName==="tc"?p.parentNode:null;
       if(tc){
-        setCellText(tc,`日期：${fillDate}`,{size:22});
+        setCellText(tc,`日期：${fillDate}`,{size:22,right:true});
       }else{
         [...p.childNodes].forEach(n=>p.removeChild(n));
-        const rr=xml.createElementNS(NS,"w:r"),tt=xml.createElementNS(NS,"w:t");
-        tt.textContent=`日期：${fillDate}`;rr.appendChild(tt);p.appendChild(rr);
+        const pPr=xml.createElementNS(NS,"w:pPr");
+        const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val","right");pPr.appendChild(jc);p.appendChild(pPr);
+        const rr=xml.createElementNS(NS,"w:r"),rPr=xml.createElementNS(NS,"w:rPr");
+        const fonts=xml.createElementNS(NS,"w:rFonts");
+        fonts.setAttributeNS(NS,"w:ascii","DFKai-SB");fonts.setAttributeNS(NS,"w:hAnsi","DFKai-SB");fonts.setAttributeNS(NS,"w:eastAsia","標楷體");
+        const sz=xml.createElementNS(NS,"w:sz");sz.setAttributeNS(NS,"w:val","22");
+        const szCs=xml.createElementNS(NS,"w:szCs");szCs.setAttributeNS(NS,"w:val","22");
+        rPr.appendChild(fonts);rPr.appendChild(sz);rPr.appendChild(szCs);rr.appendChild(rPr);
+        const tt=xml.createElementNS(NS,"w:t");tt.textContent=`日期：${fillDate}`;rr.appendChild(tt);p.appendChild(rr);
       }
     }
   }
@@ -230,4 +237,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v2.4.0 loaded");
+console.log("Semester ISP checkbox/export fix v2.4.1 loaded");
