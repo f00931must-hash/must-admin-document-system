@@ -54,45 +54,21 @@ function nextTerm(record){
 }
 async function copyRecord(record,button){
   if(!record)return;
-  const suggested=nextTerm(record);
-  const year=prompt("要複製到哪一個學年度？",suggested.year);
-  if(year===null)return;
-  const semester=prompt("要複製到哪一學期？請輸入 1、2 或 3（暑期）",suggested.semester);
-  if(semester===null)return;
-  if(!/^\d{2,3}$/.test(norm(year))||!["1","2","3"].includes(norm(semester))){
-    alert("學年度或學期格式不正確，未進行複製。");return;
-  }
-  await refreshRecords();
-  const exists=records.some(r=>normName(r.studentName)===normName(record.studentName)&&String(r.form?.academicYear||"")===norm(year)&&String(r.form?.semester||"")===norm(semester));
-  if(exists){alert("這位學生在指定學年度／學期已經有一份學期 ISP，為避免覆蓋既有資料，本次不建立副本。");return;}
-  if(!confirm(`確定要把「${record.studentName||"未命名"}」目前這份學期 ISP 複製成 ${year} 學年度第 ${semester} 學期嗎？\n\n原本資料不會被修改。`))return;
   button.disabled=true;
   try{
-    const form=structuredClone(record.form||{});
-    form.academicYear=norm(year);
-    form.semester=norm(semester);
-    form.fillDate=rocToday();
-    const user=auth.currentUser;
-    await addDoc(collection(db,"adminDocuments"),{
-      ownerEmail,
-      type:"SEMESTER_ISP",
-      studentName:norm(record.studentName||form.studentName),
-      form,
-      copiedFromId:record.id,
-      copiedAt:serverTimestamp(),
-      ownerUid:user?.uid||record.ownerUid||"",
-      createdByUid:user?.uid||"",
-      createdByEmail:norm(user?.email).toLowerCase(),
-      createdAt:serverTimestamp(),
-      updatedAt:serverTimestamp(),
-      lastEditorUid:user?.uid||"",
-      lastEditorEmail:norm(user?.email).toLowerCase()
-    });
-    alert("已建立學期 ISP 副本；原本資料沒有修改。\n\n請重新開啟學期 ISP 列表後確認內容並視需要調整。");
-    const nav=document.querySelector('.nav[data-view="semesterIsp"]');
-    nav?.click();
+    if(window.__semesterTermNav?.copyRecord){
+      const created=await window.__semesterTermNav.copyRecord(record);
+      if(created){
+        await refreshRecords();
+        alert("已建立學期 ISP 副本；原本資料沒有修改。");
+        document.querySelector('.nav[data-view="semesterIsp"]')?.click();
+      }
+      return;
+    }
+    alert("學期選擇器尚未完成載入，請重新整理頁面後再試。");
   }catch(error){
-    console.error(error);alert("複製失敗，請確認網路或權限。");
+    console.error(error);
+    alert("複製失敗，請確認網路或權限。");
   }finally{button.disabled=false;}
 }
 async function deleteRecord(record,button){
@@ -175,4 +151,4 @@ setTimeout(apply,0);
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
-console.log("Semester ISP list actions/copy v1.1.4 loaded");
+console.log("Semester ISP list actions/copy v1.2.0 loaded");
