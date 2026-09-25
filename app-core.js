@@ -148,8 +148,18 @@ const semesterAnalyses=[
 function ratingField(name,label,options){return `<fieldset class="compact"><legend>${label}</legend><div class="checks">${options.map(option=>`<label><input type="radio" name="${name}" value="${option}">${option}</label>`).join("")}</div></fieldset>`;}
 $("semesterStrengthGrid").innerHTML=semesterStrengths.map(([name,label])=>ratingField(name,label,["良好","尚可","待加強"])).join("");
 $("semesterAnalysisGrid").innerHTML=semesterAnalyses.map(([name,label,options])=>ratingField(name,label,options)).join("");
-function clearSemesterIspForm(){$("semesterIspForm").reset();$("semesterDocId").value="";}
-function fillSemesterIspForm(item){clearSemesterIspForm();$("semesterDocId").value=item.id||"";for(const el of $("semesterIspForm").elements){if(!el.name)continue;const value=item.form?.[el.name];if(el.type==="radio")el.checked=value===el.value;else if(value!==undefined)el.value=el.matches("[data-roc-date]")?rocInputDate(value):value??"";}}
+function clearSemesterIspForm(){$("semesterIspForm").reset();$("semesterDocId").value="";setTimeout(()=>window.__semesterTeacherSummary?.clear?.(),0);}
+function fillSemesterIspForm(item){
+  clearSemesterIspForm();
+  $("semesterDocId").value=item.id||"";
+  for(const el of $("semesterIspForm").elements){
+    if(!el.name)continue;
+    const value=item.form?.[el.name];
+    if(el.type==="radio")el.checked=value===el.value;
+    else if(value!==undefined)el.value=el.matches("[data-roc-date]")?rocInputDate(value):value??"";
+  }
+  setTimeout(()=>window.__semesterTeacherSummary?.load?.(item.teacherSummary||null),0);
+}
 function openNewSemesterIsp(){clearSemesterIspForm();showPage("semesterIspEditor");}
 $("newSemesterIspBtn").onclick=openNewSemesterIsp;
 $("newSemesterIspListBtn").onclick=openNewSemesterIsp;
@@ -157,7 +167,20 @@ $("semesterIspBackBtn").onclick=async()=>{await loadSemesterIspDocs();showPage("
 let semesterIspDocuments=[];
 async function loadSemesterIspDocs(){if(!currentUser||!currentAccess)return;const q=query(collection(db,"adminDocuments"),where("ownerEmail","==",workspaceOwnerEmail()));const snap=await getDocs(q);semesterIspDocuments=[];snap.forEach(s=>{const item={id:s.id,...s.data()};if(item.type==="SEMESTER_ISP")semesterIspDocuments.push(item);});semesterIspDocuments.sort((a,b)=>createdSeconds(b)-createdSeconds(a));renderSemesterIspDocs();}
 function renderSemesterIspDocs(){const list=$("semesterIspList");list.innerHTML="";if(!semesterIspDocuments.length){list.innerHTML='<div class="doc-item">目前尚無學期 ISP 表單。</div>';return;}for(const item of semesterIspDocuments){const f=item.form||{},div=document.createElement("div");div.className="doc-item";div.innerHTML=`<div><strong>${esc(item.studentName||"未命名")}｜${esc(f.academicYear||"未填")}學年度第${esc(f.semester||"未填")}學期</strong><div class="doc-meta">${esc(f.department||"")} ${esc(f.studentClass||"")}</div></div><div class="doc-actions"><button class="secondary open-semester-doc">開啟</button></div>`;div.querySelector(".open-semester-doc").onclick=()=>{fillSemesterIspForm(item);showPage("semesterIspEditor");};list.appendChild(div);}}
-$("semesterIspForm").onsubmit=async event=>{event.preventDefault();if(!currentUser||!currentAccess)return;const form=serializeForm(event.currentTarget),ownerEmail=workspaceOwnerEmail();const common={ownerEmail,type:"SEMESTER_ISP",studentName:(form.studentName||"").trim(),form,updatedAt:serverTimestamp(),lastEditorUid:currentUser.uid,lastEditorEmail:normalizedEmail(currentUser.email)};const id=$("semesterDocId").value;if(id)await updateDoc(doc(db,"adminDocuments",id),common);else{const payload={...common,ownerUid:currentUser.uid,createdByUid:currentUser.uid,createdByEmail:normalizedEmail(currentUser.email),createdAt:serverTimestamp()};const ref=await addDoc(collection(db,"adminDocuments"),payload);$("semesterDocId").value=ref.id;}alert("學期 ISP 已儲存");};
+$("semesterIspForm").onsubmit=async event=>{
+  event.preventDefault();if(!currentUser||!currentAccess)return;
+  const form=serializeForm(event.currentTarget),ownerEmail=workspaceOwnerEmail();
+  const teacherSummary=window.__semesterTeacherSummary?.getData?.()||null;
+  const common={ownerEmail,type:"SEMESTER_ISP",studentName:(form.studentName||"").trim(),form,teacherSummary,updatedAt:serverTimestamp(),lastEditorUid:currentUser.uid,lastEditorEmail:normalizedEmail(currentUser.email)};
+  const id=$("semesterDocId").value;
+  if(id)await updateDoc(doc(db,"adminDocuments",id),common);
+  else{
+    const payload={...common,ownerUid:currentUser.uid,createdByUid:currentUser.uid,createdByEmail:normalizedEmail(currentUser.email),createdAt:serverTimestamp()};
+    const ref=await addDoc(collection(db,"adminDocuments"),payload);$("semesterDocId").value=ref.id;
+  }
+  window.__adminDocumentsCache?.invalidate?.(ownerEmail);
+  alert("學期 ISP 已儲存");
+};
 onAuthStateChanged(auth,async user=>{currentUser=user;currentAccess=null;$("appView").classList.add('hidden');$("loginView").classList.add('hidden');$("deniedView").classList.add('hidden');if(!user){$("loginView").classList.remove('hidden');return}try{const email=String(user.email||'').trim().toLowerCase();const snap=await getDoc(doc(db,'settings','adminAccess'));const baseAccess=snap.data()?.users?.[email];let access=baseAccess?.enabled!==false?baseAccess:null;if(!access){const assistantSnap=await getDoc(doc(db,'administrativeAssistants',email));const assistantData=assistantSnap.exists()?assistantSnap.data():null;if(assistantData?.enabled===true&&assistantData.ownerEmail){access={...assistantData,email,role:'assistant',ownerEmail:normalizedEmail(assistantData.ownerEmail)};}}if(!access)throw new Error('not-authorized');currentAccess={...access,email};$("appView").classList.remove('hidden');$("userEmail").textContent=`${access.displayName||email}\n${email}`;}catch(err){console.error(err);$("deniedMessage").textContent='此帳號尚未由資源教室行政平台開通行政文書權限，或權限尚未同步。';$("deniedView").classList.remove('hidden');}});
 $("deniedLogoutBtn").onclick=()=>signOut(auth);
 
