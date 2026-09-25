@@ -20,6 +20,65 @@ function teacherClassDisplay(department,studentClass){
   if(!cls)return dept;
   return cls.startsWith(dept)?cls:dept+cls;
 }
-async function generate(){const form=$("semesterIspForm"),panel=$("semesterTeacherIspSummaryPanel");if(!form||!panel)return;const f=serialize(form),base=await baseIsp(f.studentName,f.department);$("semesterTeacherSummaryDepartment").value=f.department||"";$("semesterTeacherSummaryClass").value=teacherClassDisplay(f.department,f.studentClass);$("semesterTeacherSummaryStudentName").value=f.studentName||"";$("semesterTeacherSummaryDisability").value=f.disabilityType||base?.form?.disabilityType||base?.form?.certificateCategory||"";$("semesterTeacherSummaryAdvisor").value=base?.form?.advisorName||"";$("semesterTeacherSummaryCounselor").value=base?.form?.counselorName||"";$("semesterTeacherSummaryExtension").value=base?.form?.counselorExtension||"";panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});const ss=source(form,statusFields),ts=source(form,strategyFields);if(!ss&&!ts){alert("目前這份學期 ISP 尚無足夠資料可供統整。");return;}const b=$("generateSemesterTeacherSummaryBtn"),old=b.textContent;b.disabled=true;b.textContent="AI 統整中…";try{const result=await Promise.all([ask(ss||ts,"status"),ask(ts||ss,"strategies")]);$("semesterTeacherSummaryStatus").value=result[0];$("semesterTeacherSummaryStrategies").value=result[1];}catch(e){console.error(e);alert(e?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}finally{b.disabled=false;b.textContent=old;}}
+function clearSummary(){
+  for(const id of ["semesterTeacherSummaryDepartment","semesterTeacherSummaryClass","semesterTeacherSummaryStudentName","semesterTeacherSummaryDisability","semesterTeacherSummaryAdvisor","semesterTeacherSummaryCounselor","semesterTeacherSummaryExtension","semesterTeacherSummaryStatus","semesterTeacherSummaryStrategies"]){
+    const el=$(id);if(el)el.value="";
+  }
+  $("semesterTeacherIspSummaryPanel")?.classList.add("hidden");
+}
+function getSummaryData(){
+  const status=norm($("semesterTeacherSummaryStatus")?.value),strategies=norm($("semesterTeacherSummaryStrategies")?.value);
+  const hasAny=[status,strategies,norm($("semesterTeacherSummaryDepartment")?.value),norm($("semesterTeacherSummaryClass")?.value)].some(Boolean);
+  if(!hasAny)return null;
+  return {
+    department:norm($("semesterTeacherSummaryDepartment")?.value),
+    studentClass:norm($("semesterTeacherSummaryClass")?.value),
+    studentName:norm($("semesterTeacherSummaryStudentName")?.value),
+    disabilityType:norm($("semesterTeacherSummaryDisability")?.value),
+    advisorName:norm($("semesterTeacherSummaryAdvisor")?.value),
+    counselorName:norm($("semesterTeacherSummaryCounselor")?.value),
+    counselorExtension:norm($("semesterTeacherSummaryExtension")?.value),
+    status,strategies
+  };
+}
+function loadSummary(data){
+  clearSummary();
+  if(!data)return;
+  $("semesterTeacherSummaryDepartment").value=data.department||"";
+  $("semesterTeacherSummaryClass").value=data.studentClass||"";
+  $("semesterTeacherSummaryStudentName").value=data.studentName||"";
+  $("semesterTeacherSummaryDisability").value=data.disabilityType||"";
+  $("semesterTeacherSummaryAdvisor").value=data.advisorName||"";
+  $("semesterTeacherSummaryCounselor").value=data.counselorName||"";
+  $("semesterTeacherSummaryExtension").value=data.counselorExtension||"";
+  $("semesterTeacherSummaryStatus").value=data.status||"";
+  $("semesterTeacherSummaryStrategies").value=data.strategies||"";
+}
+async function generate({force=false}={}){
+  const form=$("semesterIspForm"),panel=$("semesterTeacherIspSummaryPanel");if(!form||!panel)return;
+  const existing=getSummaryData();
+  if(existing?.status&&existing?.strategies&&!force){
+    panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});return;
+  }
+  const f=serialize(form),base=await baseIsp(f.studentName,f.department);
+  $("semesterTeacherSummaryDepartment").value=f.department||"";
+  $("semesterTeacherSummaryClass").value=teacherClassDisplay(f.department,f.studentClass);
+  $("semesterTeacherSummaryStudentName").value=f.studentName||"";
+  $("semesterTeacherSummaryDisability").value=f.disabilityType||base?.form?.disabilityType||base?.form?.certificateCategory||"";
+  $("semesterTeacherSummaryAdvisor").value=base?.form?.advisorName||"";
+  $("semesterTeacherSummaryCounselor").value=base?.form?.counselorName||"";
+  $("semesterTeacherSummaryExtension").value=base?.form?.counselorExtension||"";
+  panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});
+  const ss=source(form,statusFields),ts=source(form,strategyFields);
+  if(!ss&&!ts){alert("目前這份學期 ISP 尚無足夠資料可供統整。");return;}
+  const b=force?$("regenerateSemesterTeacherSummaryBtn"):$("generateSemesterTeacherSummaryBtn"),old=b?.textContent||"";
+  if(b){b.disabled=true;b.textContent="AI 統整中…";}
+  try{
+    const result=await Promise.all([ask(ss||ts,"status"),ask(ts||ss,"strategies")]);
+    $("semesterTeacherSummaryStatus").value=result[0];
+    $("semesterTeacherSummaryStrategies").value=result[1];
+  }catch(e){console.error(e);alert(e?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
+  finally{if(b){b.disabled=false;b.textContent=old;}}
+}
 async function download(){try{if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");const status=norm($("semesterTeacherSummaryStatus").value),strategies=norm($("semesterTeacherSummaryStrategies").value);if(!status||!strategies)throw new Error("請先產生或填寫兩個摘要區塊");const counselorName=norm($("semesterTeacherSummaryCounselor").value).replace(/老師$/,""),counselorExtension=norm($("semesterTeacherSummaryExtension").value);if(!counselorName||!counselorExtension)throw new Error("請先填寫輔導老師姓名與分機");const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.1",{cache:"no-store"});if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");const zip=new window.PizZip(await res.arrayBuffer()),docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});const itemLines=text=>text.split(/\n+/).map(stripListPrefix).filter(Boolean),statusItems=itemLines(status),strategyItems=itemLines(strategies);if(statusItems.length!==5||strategyItems.length!==5)throw new Error("障礙現況與支持策略都必須各有 5 點，請確認列點內容");const data={department:norm($("semesterTeacherSummaryDepartment").value),studentClass:norm($("semesterTeacherSummaryClass").value),studentName:norm($("semesterTeacherSummaryStudentName").value),disabilityType:norm($("semesterTeacherSummaryDisability").value),advisorName:norm($("semesterTeacherSummaryAdvisor").value).replace(/老師$/,""),counselorName,counselorExtension};for(let i=1;i<=5;i++)data["status"+i]=[{text:statusItems[i-1]}];for(let i=1;i<=5;i++)data["strategy"+i]=[{text:strategyItems[i-1]}];docx.render(data);const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),safe=(data.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");window.saveAs(blob,safe+"_任課老師ISP摘要.docx");}catch(e){console.error(e);alert("Word 產生失敗："+(e?.message||e));}}
-$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",generate);$("closeSemesterTeacherSummaryBtn")?.addEventListener("click",()=>$("semesterTeacherIspSummaryPanel")?.classList.add("hidden"));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);console.log("Semester teacher ISP summary v1.0.3 loaded");
+$("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("closeSemesterTeacherSummaryBtn")?.addEventListener("click",()=>$("semesterTeacherIspSummaryPanel")?.classList.add("hidden"));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary};console.log("Semester teacher ISP summary v1.1.0 loaded");
