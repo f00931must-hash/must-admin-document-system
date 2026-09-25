@@ -117,7 +117,7 @@ function ensureHint(){
   const form=$("semesterIspForm");if(!form||$("semesterTermSwitchHint"))return;
   const first=form.querySelector(".official-section");if(!first)return;
   const hint=document.createElement("div");hint.id="semesterTermSwitchHint";hint.className="timetable-notice";hint.style.marginTop="10px";
-  hint.textContent="同一位學生會依「年級＋學期」分開儲存。切換年級或學期時，系統會自動載入該學期已儲存資料；尚未建立的學期會顯示空白表單。";
+  hint.remove();
   first.appendChild(hint);
 }
 function markChecks(values,options){
