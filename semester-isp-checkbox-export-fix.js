@@ -135,12 +135,9 @@ async function downloadFixed(event){
 }
 function install(){
   const form=$("semesterIspForm");if(!form||form.dataset.checkboxFix23)return;form.dataset.checkboxFix23="1";
-  // 唯一的年級／學期切換主流程。
-  form.elements.studentGrade?.addEventListener("change",switchTermLive,true);
-  form.elements.semester?.addEventListener("change",switchTermLive,true);
-  // 勾選值校正與開啟既有文件後的還原交由 checkbox-value-guard；
-  // 正式 submit 會一次儲存完整表單，不再額外重複 patch Firestore。
+  // 年級／學期不再用下拉選單觸發資料切換；由 16 學期按鈕導航統一接管。
+  // 本模組只保留勾選輸出與 Word 下載。
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v2.3.0 loaded");
+console.log("Semester ISP checkbox/export fix v2.3.3 loaded");
