@@ -29,3 +29,23 @@
 .symptom-inline-detail{display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
 .symptom-inline-detail .inline-detail-input{width:150px;min-width:110px;padding:4px 6px}
 @media(max-width:700px){.symptom-inline-detail{flex-wrap:wrap}.symptom-inline-detail .inline-detail-input{width:100%}}
+
+.semester-term-navigator{margin:0 0 18px;padding:14px;border:1px solid #d8e2f0;border-radius:14px;background:#f8fbff}
+.semester-term-head{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:12px}
+.semester-term-head>div{display:flex;flex-direction:column;gap:4px}
+.semester-term-head small{color:#667085;font-weight:400}
+.semester-term-head label,.copy-base-year{min-width:150px;font-weight:700}
+.semester-term-grid,.semester-copy-grid{display:grid;grid-template-columns:repeat(8,minmax(84px,1fr));gap:8px}
+.semester-term-btn{border:1px solid #cbd5e1;background:#fff;border-radius:10px;padding:8px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:#17324d}
+.semester-term-btn strong{font-size:15px}
+.semester-term-btn small{font-size:11px;color:#667085}
+.semester-term-btn:hover{border-color:#45afe2;background:#f1faff}
+.semester-term-btn.active{background:#dff4ff;border-color:#32a9e0;box-shadow:0 0 0 2px rgba(50,169,224,.12)}
+.semester-term-btn.occupied{background:#f2f4f7;color:#98a2b3}
+.semester-term-modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.semester-term-dialog{width:min(880px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.semester-term-dialog h3{margin-top:0}
+.copy-base-year{display:block;margin:12px 0}
+.semester-copy-grid{margin:12px 0 16px}
+@media(max-width:900px){.semester-term-grid,.semester-copy-grid{grid-template-columns:repeat(4,minmax(80px,1fr))}}
+@media(max-width:600px){.semester-term-head{align-items:stretch;flex-direction:column}.semester-term-grid,.semester-copy-grid{grid-template-columns:repeat(2,minmax(100px,1fr))}}
