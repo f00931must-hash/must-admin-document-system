@@ -114,11 +114,7 @@ function restoreCurrentCheckboxes(){
   }
 }
 function ensureHint(){
-  const form=$("semesterIspForm");if(!form||$("semesterTermSwitchHint"))return;
-  const first=form.querySelector(".official-section");if(!first)return;
-  const hint=document.createElement("div");hint.id="semesterTermSwitchHint";hint.className="timetable-notice";hint.style.marginTop="10px";
-  hint.remove();
-  first.appendChild(hint);
+  $("semesterTermSwitchHint")?.remove();
 }
 function markChecks(values,options){
   const set=new Set(Array.isArray(values)?values:[]);
