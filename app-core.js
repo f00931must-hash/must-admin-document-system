@@ -671,13 +671,16 @@ const TEACHER_SUMMARY_STATUS_FIELDS=[
   "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
   "studentNeedsAssessment","serviceEvaluationSummary"
 ];
-const TEACHER_SUMMARY_STRATEGY_FIELDS=[...TEACHER_SUMMARY_STATUS_FIELDS,...AI_SERVICE_PLAN_FIELDS];
+const TEACHER_SUMMARY_STRATEGY_FIELDS=AI_SERVICE_PLAN_FIELDS.slice(0,14);
+const TEACHER_SUPPORT_LABELS={learningSupport:"學習支持",emotionalSupport:"情緒與人際支持",environmentSupport:"生活與環境適應支持",academicPlanningSupport:"學業規劃支持",careerSupport:"生涯與轉銜支持",adminSupport:"行政與資源申請支持",supportAdjustment:"支持服務調整評估"};
 function teacherSummarySource(fields){
   const values=formData();
   return fields.map(name=>{
     const value=values[name];
     const content=Array.isArray(value)?value.filter(Boolean).join("、"):String(value||"").trim();
-    return content?`${aiFieldLabel(name)}：${content}`:"";
+    const group=name.endsWith("Note")?name.slice(0,-4):name;
+    const label=(TEACHER_SUPPORT_LABELS[group]||aiFieldLabel(name))+(name.endsWith("Note")?"補充說明":"");
+    return content?`${label}：${content}`:"";
   }).filter(Boolean).join("\n");
 }
 function cleanTeacherSummary(text){
@@ -689,9 +692,9 @@ function cleanTeacherSummary(text){
 async function requestTeacherSummary(source,kind){
   const instruction=kind==="status"
     ?"請依據以下 ISP 總表資料，統整任課老師需要知道的學生障礙現況。請去除重複資訊，使用正式、客觀、具體的繁體中文，列出最重要的 5 點；不可新增資料中沒有的診斷、能力、需求、原因或風險。只輸出 5 點，不要標題。"
-    :"請依據以下 ISP 總表資料，統整任課老師在課程中可採取的特教支持服務及策略。請將勾選項目視為方向，結合現況與需求轉寫成具體可執行建議，避免只是重複勾選文字；只列真正有依據且必要的 5 點，不可虛構。只輸出 5 點，不要標題。";
+    :"只依據下方「特教支持服務及策略」的勾選項目與各項補充說明，依表單順序整理最多 5 點給任課老師看的支持措施。將同類別的勾選與說明一起理解，優先寫明具體科目與需求；例如勾選課業輔導且學習支持說明寫需要微積分課輔，第一點就寫學生需要微積分課輔，請任課老師留意學習狀況，必要時與輔導老師聯繫安排。用稍微白話、簡短且可執行的繁體中文，說清楚老師需要做什麼或配合什麼；資源教室負責的工作請明確寫由資源教室協助。不要引用其他段落、推測未勾選的需求或補足沒有依據的點數；資料不足 5 點就只寫有依據的點。只輸出列點，不要標題。";
   const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    text:`${instruction}\n\n【僅限貳、現況能力摘要與特殊教育需求服務資料】\n${source}`,
+    text:`${instruction}\n\n【${kind==="status"?"僅限貳、現況能力摘要與特殊教育需求服務資料":"僅限特教支持服務及策略的勾選與說明"}】\n${source}`,
     mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
     forceRewrite:true,documentType:"ISP"
   })});
@@ -785,7 +788,7 @@ async function generateNewbornTeacherSummary({force=false}={}){
   const button=force?$("regenerateTeacherSummaryBtn"):$("generateTeacherSummaryBtn"),old=button?.textContent||"";
   if(button){button.disabled=true;button.textContent="AI 統整中…";}
   try{
-    const [status,strategies]=await Promise.all([requestTeacherSummary(statusSource,"status"),requestTeacherSummary(strategySource||statusSource,"strategies")]);
+    const [status,strategies]=await Promise.all([requestTeacherSummary(statusSource,"status"),strategySource?requestTeacherSummary(strategySource,"strategies"):Promise.resolve("")]);
     $("teacherSummaryStatus").value=status;
     $("teacherSummaryStrategies").value=strategies;
     setNewbornTeacherMainButtonState(true);
