@@ -165,6 +165,7 @@ if($("semesterIspList"))observer.observe($("semesterIspList"),{childList:true,su
 if($("semesterIspForm"))observer.observe($("semesterIspForm"),{childList:true,subtree:true});
 auth.onAuthStateChanged?.(()=>{});
 setTimeout(apply,0);
+document.addEventListener("semester-isp:saved",()=>{refreshRecords().then(enhanceList).catch(console.warn);});
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
