@@ -36,6 +36,7 @@ async function resolveOwner(user){
   return email;
 }
 async function refreshDocs(){if(!ownerEmail)return;try{docs=await window.__adminDocumentsCache.getOwnerDocs(ownerEmail);applyAll();}catch(e){console.warn("ISP filter load failed",e);}}
+document.addEventListener("semester-isp:saved",refreshDocs);
 
 function totalDocForNode(node){const name=(node.querySelector("strong")?.textContent||"").split("｜")[0].trim();const meta=node.querySelector(".doc-meta")?.textContent||"";const studentId=meta.trim().split(/\s+/)[0];return docs.find(d=>(!d.type||d.type==="ISP")&&((studentId&&norm(d.studentId)===studentId)||normName(d.studentName)===normName(name)));}
 function ensureTotalFilters(){
