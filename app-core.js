@@ -161,8 +161,8 @@ const semesterAnalyses=[
   ["analysisInteraction","人際互動能力",["能力良好","能力尚可","完全不能理解","本項不適用"]],
   ["analysisLeisure","休閒能力",["能自行參與","部份能參與","完全無法參與","本項不適用"]]
 ];
-function ratingField(name,label,options){return `<fieldset class="compact"><legend>${label}</legend><div class="checks">${options.map(option=>`<label><input type="radio" name="${name}" value="${option}">${option}</label>`).join("")}</div></fieldset>`;}
-$("semesterStrengthGrid").innerHTML=semesterStrengths.map(([name,label])=>ratingField(name,label,["良好","尚可","待加強"])).join("");
+function ratingField(name,label,options){return `<fieldset class="compact"><legend>${label}</legend><div class="checks">${options.map(option=>{const item=typeof option==="object"?option:{value:option,label:option};return `<label><input type="radio" name="${name}" value="${item.value}">${item.label}</label>`;}).join("")}</div></fieldset>`;}
+$("semesterStrengthGrid").innerHTML=semesterStrengths.map(([name,label])=>ratingField(name,label,["良好","尚可",{value:"待加強",label:"弱"}])).join("");
 $("semesterAnalysisGrid").innerHTML=semesterAnalyses.map(([name,label,options])=>ratingField(name,label,options)).join("");
 function clearSemesterIspForm(){$("semesterIspForm").reset();$("semesterDocId").value="";setTimeout(()=>window.__semesterTeacherSummary?.clear?.(),0);}
 function fillSemesterIspForm(item){
@@ -233,8 +233,10 @@ function wordContinuousText(value){
   return String(value??"")
     .replace(/\r\n?/g,"\n")
     .replace(/[\t　]+/g," ")
-    .replace(/\s*\n+\s*/g,"")
-    .replace(/ {2,}/g," ")
+    .split(/\n+/)
+    .map(line=>line.replace(/ {2,}/g," ").trim())
+    .filter(Boolean)
+    .join("\n")
     .trim();
 }
 function exportData(f){
@@ -1005,7 +1007,7 @@ $("downloadBtn").onclick=async()=>{
 };
 
 function semesterExportData(f){
-  const strengthBlock=semesterStrengths.map(([name,label],index)=>`(${index+1})${ratingLine(label,f[name],["良好","尚可","待加強"])}`).join("\n");
+  const strengthBlock=semesterStrengths.map(([name,label],index)=>`(${index+1})${label} ${["良好","尚可","弱"].map(x=>`${((x==="弱"&&["弱","待加強"].includes(f[name]))||f[name]===x)?"■":"□"}${x}`).join(" ")}`).join("\n");
   const analysisBlock=semesterAnalyses.map(([name,label,options],index)=>`(${index+1})${ratingLine(label,f[name],options)}`).join("\n");
   const strategyLines=String(f.serviceEvaluationSummary||"").split(/\n+/).map(line=>line.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）])\s*/,"").trim()).filter(Boolean);
   const supportItems=strategyLines.map((text,index)=>({text:`${index+1}. ${text}`}));
