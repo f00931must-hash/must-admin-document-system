@@ -80,3 +80,6 @@
 .import-mode-grid button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;text-align:left}
 .import-mode-grid small{font-weight:400;opacity:.82}
 @media(max-width:650px){.import-mode-grid{grid-template-columns:1fr}}
+.contact-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;margin:18px 0}.contact-form label{display:grid;gap:5px}.contact-form input{width:100%}#teacherContacts .editor-card{margin-bottom:22px}#contactDirectory td button+button{margin-left:6px}
+
+.contact-choices{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.contact-choices button{font-size:12px;padding:5px 8px}

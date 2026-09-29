@@ -5,15 +5,24 @@ service cloud.firestore {
     function email() { return request.auth.token.email.lower(); }
     function accessExists() { return exists(/databases/$(database)/documents/settings/adminAccess); }
     function access() { return get(/databases/$(database)/documents/settings/adminAccess).data; }
-    function activeUser() { return signedIn() && accessExists() && access().users[email()].enabled == true; }
+    function activeUser() { return signedIn() && accessExists() && email() in access().users && access().users[email()].enabled == true; }
     function admin() { return activeUser() && access().users[email()].role == 'admin'; }
+    function assistantActive() {
+      return signedIn() && exists(/databases/$(database)/documents/administrativeAssistants/$(email()))
+        && get(/databases/$(database)/documents/administrativeAssistants/$(email())).data.enabled == true;
+    }
+    function contactUser() { return activeUser() || assistantActive(); }
     function role() { return access().users[email()].role; }
     function workspaceOwnerEmail() {
       return role() == 'assistant' ? access().users[email()].ownerEmail : email();
     }
 
+    match /administrativeAssistants/{assistantEmail} {
+      allow read: if signedIn() && assistantEmail == email();
+    }
+
     match /settings/adminAccess {
-      allow read: if activeUser();
+      allow read: if contactUser();
       allow create, update: if admin();
       allow delete: if false;
     }
@@ -32,6 +41,14 @@ service cloud.firestore {
         && resource.data.ownerEmail == email();
     }
 
+    match /adminTeacherContacts/{contactId} {
+      allow read: if contactUser();
+      allow create, update: if contactUser()
+        && request.resource.data.keys().hasOnly(['name', 'department', 'email', 'extension', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.email is string;
+      allow delete: if contactUser();
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }
