@@ -81,15 +81,15 @@ function applySemesterFilters(){ensureSemesterFilters();const list=$("semesterIs
 function fieldset(title,name,options,noteLabel="說明（可視個別狀況作質性／補充說明）"){
   return `<fieldset class="official-fieldset semester-support-fieldset"><legend>${title}</legend><div class="checks">${options.map(o=>`<label><input type="checkbox" name="${name}" value="${o.value||o}">${o.label||o.value||o}</label>`).join("")}</div><label>${noteLabel}<textarea name="${name}Note" rows="3"></textarea></label></fieldset>`;
 }
-function ensureSemesterSupportFields(){const form=$("semesterIspForm");if(!form||$("semesterSupportFields"))return;const strategy=form.querySelector('[name="serviceEvaluationSummary"]')?.closest("label");if(!strategy)return;const box=document.createElement("div");box.id="semesterSupportFields";box.innerHTML=`<h3>特教支持服務及策略（新版）</h3>
+function ensureSemesterSupportFields(){const form=$("semesterIspForm");if(!form||$("semesterSupportFields"))return;const needs=form.querySelector('[name="studentNeedsAssessment"]')?.closest("label");if(!needs)return;const box=document.createElement("div");box.id="semesterSupportFields";box.innerHTML=`<h3>特教支持服務及策略</h3>
 ${fieldset("學習支持","learningSupport",["無特殊學習支持需求",{value:"課業輔導（視學生主動申請或需求提供）",label:"課業輔導（視學生主動申請或需求提供）"},"筆記／同儕協助","學習輔具協助","考試調整（延長時間／獨立考場等）","課業提醒與關懷（出缺席／作業狀況）","必要時協助與任課教師溝通","其他"])}
 ${fieldset("情緒與人際支持","emotionalSupport",["無特殊需求","個別關懷晤談","團體輔導／主題活動參與","課業壓力與情緒支持","人際互動適應關懷","轉介心理諮商資源","其他"])}
 ${fieldset("生活與環境適應支持","environmentSupport",["無特殊需求","需無障礙環境調整","需生活同儕協助","作息與時間管理協助","交通費補助（無法自行上下學）","其他"])}
 ${fieldset("學業規劃支持","academicPlanningSupport",["畢業學分檢視與修課進度追蹤","選課諮詢與修課建議","修課負荷評估與調整建議","課程衝堂與學分風險提醒","畢業進度與延畢風險評估","必要時協助與系上溝通修課需求","其他"])}
 ${fieldset("生涯與轉銜支持","careerSupport",["生涯探索／討論","職涯諮詢／評估","畢業準備與轉銜規劃討論","履歷／自傳協助（修改與建議）","就業準備支持（基本面試準備／資訊提供）","個別轉銜會議","轉銜資源連結（就業中心等）"])}
-${fieldset("行政與資源申請支持","adminSupport",["特教生獎助學金申請協助","校內外資源資訊提供：校內－高教深耕計畫","校內行政資源申請協助","校外資源轉介與申請協助","其他"],"說明")}
-${fieldset("支持服務調整評估","supportAdjustment",["現有支持適切，持續維持","需調整部分支持內容","需新增或加強支持服務","需減少或結束部分支持","其他"],"說明")}`;
-  strategy.parentNode.insertBefore(box,strategy);
+${fieldset("行政與資源申請支持","adminSupport",["特教生獎助學金申請協助","校內外資源資訊提供：校內－高教深耕計畫","校內行政資源申請協助","校外資源轉介與申請協助","其他"],"其他說明")}
+${fieldset("支持服務調整評估","supportAdjustment",["現有支持適切，持續維持","需調整部分支持內容","需新增或加強支持服務","需減少或結束部分支持","其他"],"其他說明")}`;
+  needs.insertAdjacentElement("afterend",box);
 }
 
 function ensureClassHints(){
@@ -104,4 +104,4 @@ const totalObserver=$("docList")?new MutationObserver(()=>setTimeout(applyTotalF
 const semesterObserver=$("semesterIspList")?new MutationObserver(()=>setTimeout(applySemesterFilters,80)):null;semesterObserver?.observe($("semesterIspList"),{childList:true,subtree:true});
 ensureSemesterSupportFields();ensureClassHints();ensureTotalFilters();ensureSemesterFilters();
 onAuthStateChanged(auth,async user=>{ownerEmail=await resolveOwner(user);if(user)await refreshDocs();});
-console.log("ISP UI filters/support v2.1.1 loaded");
+console.log("ISP UI filters/support v2.1.6 loaded");
