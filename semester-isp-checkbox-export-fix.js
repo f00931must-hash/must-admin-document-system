@@ -101,22 +101,13 @@ function patchSemesterWordLayout(zip,data){
   const xml=new DOMParser().parseFromString(file.asText(),"application/xml");
   const compact=s=>String(s||"").replace(/[\s　]/g,"").replace(/／/g,"/").replace(/[－–—]/g,"-");
   const textOf=node=>[...node.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
-
   const elementChildren=(node,name)=>[...node.childNodes].filter(n=>n.nodeType===1&&n.namespaceURI===NS&&(!name||n.localName===name));
   const nextCell=tc=>{
     let n=tc?.nextSibling||null;
     while(n){if(n.nodeType===1&&n.namespaceURI===NS&&n.localName==="tc")return n;n=n.nextSibling;}
     return null;
   };
-  function setCellText(tc,text,{bold=false,size=22,center=false,right=false}={}){
-    if(!tc)return;
-    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
-    const p=xml.createElementNS(NS,"w:p");
-    if(center||right){
-      const pPr=xml.createElementNS(NS,"w:pPr");
-      const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val",right?"right":"center");
-      pPr.appendChild(jc);p.appendChild(pPr);
-    }
+  function makeRun(text,{bold=false,size=22}={}){
     const r=xml.createElementNS(NS,"w:r"),rPr=xml.createElementNS(NS,"w:rPr");
     const fonts=xml.createElementNS(NS,"w:rFonts");
     fonts.setAttributeNS(NS,"w:ascii","DFKai-SB");fonts.setAttributeNS(NS,"w:hAnsi","DFKai-SB");fonts.setAttributeNS(NS,"w:eastAsia","標楷體");
@@ -126,14 +117,56 @@ function patchSemesterWordLayout(zip,data){
     const szCs=xml.createElementNS(NS,"w:szCs");szCs.setAttributeNS(NS,"w:val",String(size));rPr.appendChild(szCs);
     r.appendChild(rPr);
     const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=String(text||"");
-    r.appendChild(t);p.appendChild(r);tc.appendChild(p);
+    r.appendChild(t);return r;
+  }
+  function setCellText(tc,text,{bold=false,size=22,center=false,right=false}={}){
+    if(!tc)return;
+    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
+    const p=xml.createElementNS(NS,"w:p");
+    if(center||right){
+      const pPr=xml.createElementNS(NS,"w:pPr"),jc=xml.createElementNS(NS,"w:jc");
+      jc.setAttributeNS(NS,"w:val",right?"right":"center");pPr.appendChild(jc);p.appendChild(pPr);
+    }
+    p.appendChild(makeRun(text,{bold,size}));tc.appendChild(p);
+  }
+  function setCellParagraphs(tc,text,{size=22}={}){
+    if(!tc)return;
+    const lines=String(text||"").replace(/\r\n?/g,"\n").split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
+    if(!lines.length){tc.appendChild(xml.createElementNS(NS,"w:p"));return;}
+    lines.forEach(line=>{
+      const p=xml.createElementNS(NS,"w:p");
+      p.appendChild(makeRun(line,{size}));
+      tc.appendChild(p);
+    });
+  }
+  function setParagraphText(p,text,{size=22,right=false,center=false,bold=false}={}){
+    if(!p)return;
+    [...p.childNodes].forEach(n=>p.removeChild(n));
+    if(right||center){
+      const pPr=xml.createElementNS(NS,"w:pPr"),jc=xml.createElementNS(NS,"w:jc");
+      jc.setAttributeNS(NS,"w:val",right?"right":"center");pPr.appendChild(jc);p.appendChild(pPr);
+    }
+    p.appendChild(makeRun(text,{size,bold}));
   }
   function findCellByLabel(label){
     return [...xml.getElementsByTagNameNS(NS,"tc")].find(tc=>compact(textOf(tc)).includes(compact(label)))||null;
   }
-  function setRightCell(label,text,opts){
+  function setRightCell(label,text,opts={}){
     const labelCell=findCellByLabel(label);if(!labelCell)return;
-    setCellText(nextCell(labelCell),text,opts);
+    const target=nextCell(labelCell);
+    if(String(text||"").includes("\n"))setCellParagraphs(target,text,opts);
+    else setCellText(target,text,opts);
+  }
+  function findRowByLabel(label){
+    return [...xml.getElementsByTagNameNS(NS,"tr")].find(tr=>compact(textOf(tr)).includes(compact(label)))||null;
+  }
+  function setSupportNote(rowLabel,note){
+    if(!note)return;
+    const row=findRowByLabel(rowLabel);if(!row)return;
+    const paragraphs=[...row.getElementsByTagNameNS(NS,"p")];
+    const p=paragraphs.find(x=>compact(textOf(x)).startsWith(compact("說明：")));
+    if(p)setParagraphText(p,`說明：${note}`,{size:22});
   }
   function clearFixedRowHeightForLabels(labels){
     const rows=[...xml.getElementsByTagNameNS(NS,"tr")];
@@ -144,42 +177,47 @@ function patchSemesterWordLayout(zip,data){
       elementChildren(trPr,"trHeight").forEach(n=>trPr.removeChild(n));
     }
   }
+  function formatRocDate(value){
+    const raw=norm(value);
+    const m=raw.match(/^(\d{2,3})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+    if(!m)return raw;
+    return `${Number(m[1])}年${String(Number(m[2])).padStart(2,"0")}月${String(Number(m[3])).padStart(2,"0")}日`;
+  }
+
+  // 新版 1150810 母版為正式空白表，所有內容由這裡依欄位定位填入。
+  const title=[...xml.getElementsByTagNameNS(NS,"p")].find(p=>compact(textOf(p)).includes("個別化支持計畫(ISP)"));
+  if(title)setParagraphText(title,`${data.academicYear||""} 學年度第 ${data.semester||""} 學期  個別化支持計畫（ISP）`,{size:32,center:true,bold:true});
+
+  const dateParagraph=[...xml.getElementsByTagNameNS(NS,"p")].find(p=>compact(textOf(p)).startsWith("日期："));
+  if(dateParagraph)setParagraphText(dateParagraph,`日期：${formatRocDate(data.fillDate||data.fillDateText)}`,{size:22,right:true});
 
   setRightCell("系級",data.classDisplay||"",{center:true,size:22});
+  setRightCell("姓名",data.studentName||"",{center:true,size:22});
+  setRightCell("障別",data.disabilityType||"",{center:true,size:22});
+  setRightCell("程度",data.disabilityLevel||"",{center:true,size:22});
 
-  // 日期固定靠右，標楷體 11pt。
-  const fillDate=norm(data.fillDate||data.fillDateText);
-  if(fillDate){
-    const paragraphs=[...xml.getElementsByTagNameNS(NS,"p")];
-    const p=paragraphs.find(x=>compact(textOf(x)).startsWith("日期：")||compact(textOf(x))==="日期:");
-    if(p){
-      const tc=p.parentNode?.localName==="tc"?p.parentNode:null;
-      if(tc){
-        setCellText(tc,`日期：${fillDate}`,{size:22,right:true});
-      }else{
-        [...p.childNodes].forEach(n=>p.removeChild(n));
-        const pPr=xml.createElementNS(NS,"w:pPr");
-        const jc=xml.createElementNS(NS,"w:jc");jc.setAttributeNS(NS,"w:val","right");pPr.appendChild(jc);p.appendChild(pPr);
-        const rr=xml.createElementNS(NS,"w:r"),rPr=xml.createElementNS(NS,"w:rPr");
-        const fonts=xml.createElementNS(NS,"w:rFonts");
-        fonts.setAttributeNS(NS,"w:ascii","DFKai-SB");fonts.setAttributeNS(NS,"w:hAnsi","DFKai-SB");fonts.setAttributeNS(NS,"w:eastAsia","標楷體");
-        const sz=xml.createElementNS(NS,"w:sz");sz.setAttributeNS(NS,"w:val","22");
-        const szCs=xml.createElementNS(NS,"w:szCs");szCs.setAttributeNS(NS,"w:val","22");
-        rPr.appendChild(fonts);rPr.appendChild(sz);rPr.appendChild(szCs);rr.appendChild(rPr);
-        const tt=xml.createElementNS(NS,"w:t");tt.textContent=`日期：${fillDate}`;rr.appendChild(tt);p.appendChild(rr);
-      }
-    }
-  }
+  [
+    ["健康狀況","abilityHealth"],["感官功能","abilitySensory"],["知覺動作","abilityMotor"],
+    ["認知能力","abilityCognitive"],["溝通能力","abilityCommunication"],["學業能力","abilityAcademic"],
+    ["生活自理能力","abilitySelfCare"],["社會化及情緒行為能力","abilitySocialEmotional"],
+    ["修課學分","courseCredits"],["學生需求評估","studentNeedsAssessment"]
+  ].forEach(([label,key])=>setRightCell(label,data[key]||"",{size:22}));
+
+  setSupportNote("學習支持",norm(data.learningSupportNote));
+  setSupportNote("情緒與人際支持",norm(data.emotionalSupportNote));
+  setSupportNote("生活與環境適應支持",norm(data.environmentSupportNote));
+  setSupportNote("學業規劃支持",norm(data.academicPlanningSupportNote));
+  setSupportNote("生涯與轉銜支持",norm(data.careerSupportNote));
 
   clearFixedRowHeightForLabels([
     "健康狀況","感官功能","知覺動作","認知能力","溝通能力","學業能力",
-    "生活自理能力","社會化及情緒行為能力",
-    "綜合評估學生優弱勢能力","現況分析","學生需求評估"
+    "生活自理能力","社會化及情緒行為能力","修課學分",
+    "綜合評估學生優弱勢能力","現況分析","學生需求評估",
+    "學習支持","情緒與人際支持","生活與環境適應支持","學業規劃支持","生涯與轉銜支持"
   ]);
 
   zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
 }
-
 function patchStaticCheckboxes(zip,selectedByName){
   const f=zip.file("word/document.xml");if(!f)return;
   const xml=new DOMParser().parseFromString(f.asText(),"application/xml");
