@@ -32,6 +32,14 @@ service cloud.firestore {
         && resource.data.ownerEmail == email();
     }
 
+    match /adminTeacherContacts/{contactId} {
+      allow read: if activeUser();
+      allow create, update: if admin()
+        && request.resource.data.keys().hasOnly(['name', 'department', 'email', 'extension', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.email is string && request.resource.data.email.size() > 3;
+      allow delete: if admin();
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }
