@@ -99,7 +99,7 @@ function patchSemesterWordLayout(zip,data){
   const NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
   const XMLNS="http://www.w3.org/XML/1998/namespace";
   const xml=new DOMParser().parseFromString(file.asText(),"application/xml");
-  const compact=s=>String(s||"").replace(/[\s　]/g,"");
+  const compact=s=>String(s||"").replace(/[\s　]/g,"").replace(/／/g,"/").replace(/[－–—]/g,"-");
   const textOf=node=>[...node.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
 
   const elementChildren=(node,name)=>[...node.childNodes].filter(n=>n.nodeType===1&&n.namespaceURI===NS&&(!name||n.localName===name));
@@ -146,8 +146,6 @@ function patchSemesterWordLayout(zip,data){
   }
 
   setRightCell("系級",data.classDisplay||"",{center:true,size:22});
-  setRightCell("綜合評估學生優弱勢能力",data.strengthSummary||"",{size:22});
-  setRightCell("現況分析",data.analysisSummary||"",{size:22});
 
   // 日期固定靠右，標楷體 11pt。
   const fillDate=norm(data.fillDate||data.fillDateText);
@@ -205,6 +203,62 @@ function patchStaticCheckboxes(zip,selectedByName){
   }
   zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
 }
+function patchOfficialRatings(zip,data){
+  const f=zip.file("word/document.xml");if(!f)return;
+  const NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const XMLNS="http://www.w3.org/XML/1998/namespace";
+  const xml=new DOMParser().parseFromString(f.asText(),"application/xml");
+  const compact=s=>String(s||"").replace(/[\s　]/g,"").replace(/／/g,"/").replace(/[－–—]/g,"-");
+  const textOf=node=>[...node.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
+  const setParagraphText=(p,text)=>{
+    const runs=[...p.getElementsByTagNameNS(NS,"r")];
+    let firstText=null;
+    for(const run of runs){
+      const texts=[...run.getElementsByTagNameNS(NS,"t")];
+      for(const t of texts){
+        if(!firstText)firstText=t;
+        else t.textContent="";
+      }
+    }
+    if(!firstText){
+      const run=xml.createElementNS(NS,"w:r"),t=xml.createElementNS(NS,"w:t");
+      t.setAttributeNS(XMLNS,"xml:space","preserve");run.appendChild(t);p.appendChild(run);firstText=t;
+    }
+    firstText.setAttributeNS(XMLNS,"xml:space","preserve");
+    firstText.textContent=text;
+  };
+  const paragraphs=[...xml.getElementsByTagNameNS(NS,"p")];
+  const strengths=[
+    ["建立人際關係能力","strengthRelationship"],["情緒控制能力","strengthEmotion"],
+    ["個人疾病認識能力","strengthIllnessAwareness"],["解決問題及處理狀況能力","strengthProblemSolving"],
+    ["尋求資源能力","strengthResourceSeeking"],["支持系統資源","strengthSupportSystem"],
+    ["家人的互動與關懷","strengthFamilyInteraction"],["家庭經濟狀況","strengthFamilyEconomy"]
+  ];
+  strengths.forEach(([label,name],i)=>{
+    const p=paragraphs.find(x=>compact(textOf(x)).includes(compact(`(${i+1})${label}`)));if(!p)return;
+    const value=data[name]==="待加強"?"弱":data[name];
+    const line=`(${i+1})${label}　${["良好","尚可","弱"].map(x=>`${value===x?"■":"□"}${x}`).join("")}`;
+    setParagraphText(p,line);
+  });
+  const analyses=[
+    ["生活自理能力","analysisSelfCare",["無需協助","需部份協助","完全需要協助","本項不適用"]],
+    ["職(學)業能力","analysisStudyWork",["無需協助","需部份協助","完全需要協助","本項不適用"]],
+    ["行動能力","analysisMobility",["無需協助","需部份協助","完全需要協助","本項不適用"]],
+    ["交通能力","analysisTransport",["無需協助","需部份協助","完全需要協助","本項不適用"]],
+    ["通訊能力","analysisCommunication",["無需協助","需部份協助","完全需要協助","本項不適用"]],
+    ["認知理解能力","analysisUnderstanding",["完全能理解","部份能理解","完全不能理解","本項不適用"]],
+    ["語言表達能力","analysisExpression",["完全能表達","部份能表達","完全不能表達","本項不適用"]],
+    ["人際互動能力","analysisInteraction",["能力良好","能力尚可","完全不能理解","本項不適用"]],
+    ["休閒能力","analysisLeisure",["能自行參與","部份能參與","完全無法參與","本項不適用"]]
+  ];
+  analyses.forEach(([label,name,options],i)=>{
+    const p=paragraphs.find(x=>compact(textOf(x)).includes(compact(`(${i+1})${label}`)));if(!p)return;
+    const line=`(${i+1})${label} ${options.map(x=>`${data[name]===x?"■":"□"}${x}`).join("")}`;
+    setParagraphText(p,line);
+  });
+  zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
+}
+
 async function downloadFixed(event){
   const btn=event.target.closest?.("#downloadSemesterIspBtn");if(!btn)return;
   event.preventDefault();event.stopImmediatePropagation();
@@ -212,11 +266,11 @@ async function downloadFixed(event){
   if(!form||!window.PizZip||!window.docxtemplater||!window.saveAs)return alert("Word 下載元件尚未完成載入，請重新整理後再試");
   const f=serialize(form),old=btn.textContent;btn.disabled=true;btn.textContent="產生新版 Word 中…";
   try{
-    const response=await fetch("./templates/semester-isp-template-v2.docx?v=2.3.0",{cache:"no-store"});
+    const response=await fetch("./templates/semester-isp-template-v2.docx?v=3.0.0",{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取新版學期 ISP Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
-    const data={...f,classDisplay:semesterClassDisplay(f),fillDateText:norm(f.fillDate),strengthSummary:norm(f.strengthSummary),analysisSummary:norm(f.analysisSummary)};
+    const data={...f,classDisplay:semesterClassDisplay(f),fillDateText:norm(f.fillDate)};
     for(const [name,options] of Object.entries(supportConfig)){
       const values=Array.isArray(f[name])?f[name]:[];
       const checks=options.map(o=>`${values.includes(o)?"■":"□"}${o}`).join("\n");
@@ -224,6 +278,7 @@ async function downloadFixed(event){
     }
     word.render(data);
     patchStaticCheckboxes(word.getZip(),f);
+    patchOfficialRatings(word.getZip(),f);
     patchSemesterWordLayout(word.getZip(),data);
     const blob=word.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(f.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
@@ -237,4 +292,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v2.4.1 loaded");
+console.log("Semester ISP checkbox/export fix v3.0.0 loaded");
