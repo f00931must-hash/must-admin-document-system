@@ -26,8 +26,11 @@
 <fieldset class="official-fieldset"><legend>綜合評估－學生優弱勢能力</legend><div id="semesterStrengthGrid" class="rating-grid"></div></fieldset>
 <fieldset class="official-fieldset"><legend>現況分析</legend><div id="semesterAnalysisGrid" class="analysis-grid"></div></fieldset>
 <label class="boxed">學生需求評估<textarea name="studentNeedsAssessment" rows="5"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="needs" data-ai-target="studentNeedsAssessment">✨ AI 自動產生整體評估</button></label>
-<label class="boxed">特教支持服務及策略<textarea name="serviceEvaluationSummary" rows="6"></textarea><button type="button" class="semester-ai-generate-btn" data-ai-kind="strategies" data-ai-target="serviceEvaluationSummary">✨ AI 自動產生支持策略</button></label>
-<label class="boxed">其他<textarea name="semesterOther" rows="4"></textarea></label>
+<!-- 舊版學期 ISP 欄位僅保留資料相容，不再顯示於新版正式表單。 -->
+<input type="hidden" name="strengthSummary">
+<input type="hidden" name="analysisSummary">
+<input type="hidden" name="serviceEvaluationSummary">
+<input type="hidden" name="semesterOther">
 
 <section id="semesterTeacherIspSummaryPanel" class="boxed hidden teacher-summary-panel">
 <h3>任課老師 ISP 摘要預覽</h3>
