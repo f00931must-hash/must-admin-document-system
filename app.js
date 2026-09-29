@@ -10,14 +10,14 @@ window.fetch=(input,init)=>{
   }catch(error){console.warn("ISP route fallback",error);}
   return nativeFetch(input,init);
 };
-await import("./app-core.js?v=1.6.23");
+await import("./app-core.js?v=1.6.24");
 await import("./admin-doc-cache.js?v=1.0.0");
 await import("./isp-autosave-hotfix.js?v=1.1.1");
-await import("./isp-structure-enhancements.js?v=2.0.7");
-await import("./isp-ui-filters-support-v2.1.js?v=2.1.5");
+await import("./isp-structure-enhancements.js?v=2.0.8");
+await import("./isp-ui-filters-support-v2.1.js?v=2.1.6");
 await import("./semester-isp-grade-8-fix.js?v=1.0.0");
-await import("./semester-isp-list-actions-v1.js?v=1.3.0");
-await import("./semester-isp-term-storage-fix.js?v=2.2.8");
+await import("./semester-isp-list-actions-v1.js?v=1.3.1");
+await import("./semester-isp-term-storage-fix.js?v=2.2.9");
 await import("./semester-isp-checkbox-export-fix.js?v=3.1.2");
 await import("./semester-isp-checkbox-value-guard.js?v=2.4.0");
 await import("./semester-isp-term-navigator-v1.js?v=1.0.0");
