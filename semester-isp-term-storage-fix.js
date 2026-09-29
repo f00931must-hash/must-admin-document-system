@@ -56,6 +56,11 @@ async function refreshDocs(){
     baseIspDocs=all.filter(x=>!x.type||x.type==="ISP");
   }catch(error){console.warn("Semester ISP term load failed",error);}
 }
+document.addEventListener("semester-isp:list-data",event=>{
+  if(ownerEmail&&ownerEmail!==event.detail.ownerEmail)return;
+  semesterDocs=event.detail.documents.filter(x=>x.type==="SEMESTER_ISP");
+  baseIspDocs=event.detail.documents.filter(x=>!x.type||x.type==="ISP");
+});
 function docGrade(d){return norm(d?.form?.studentGrade)||norm(d?.form?.studentClass).match(/[一二三四五六七]|研[一二]/)?.[0]||"";}
 function stamp(d){return d?.updatedAt?.seconds||d?.createdAt?.seconds||0;}
 function findTermDoc(name,department,grade,semester){
