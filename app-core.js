@@ -184,10 +184,13 @@ let semesterIspDocuments=[];
 async function loadSemesterIspDocs(){
   if(!currentUser||!currentAccess)return;
   semesterIspDocuments=[];
-  const q=query(collection(db,"adminDocuments"),where("ownerEmail","==",workspaceOwnerEmail()));
+  const ownerEmail=workspaceOwnerEmail();
+  const q=query(collection(db,"adminDocuments"),where("ownerEmail","==",ownerEmail));
   const snap=await getDocs(q);
-  snap.forEach(s=>{const item={id:s.id,...s.data()};if(item.type==="SEMESTER_ISP")semesterIspDocuments.push(item);});
+  const documents=snap.docs.map(s=>({id:s.id,...s.data()}));
+  semesterIspDocuments=documents.filter(item=>item.type==="SEMESTER_ISP");
   semesterIspDocuments.sort((a,b)=>createdSeconds(b)-createdSeconds(a));
+  document.dispatchEvent(new CustomEvent("semester-isp:list-data",{detail:{ownerEmail,documents}}));
   renderSemesterIspDocs();
 }
 function renderSemesterIspDocs(){const list=$("semesterIspList");list.innerHTML="";if(!semesterIspDocuments.length){list.innerHTML='<div class="doc-item">目前尚無學期 ISP 表單。</div>';return;}for(const item of semesterIspDocuments){const f=item.form||{},div=document.createElement("div");div.className="doc-item";div.innerHTML=`<div><strong>${esc(item.studentName||"未命名")}｜${esc(f.academicYear||"未填")}學年度第${esc(f.semester||"未填")}學期</strong><div class="doc-meta">${esc(f.department||"")} ${esc(f.studentClass||"")}</div></div><div class="doc-actions"><button class="secondary open-semester-doc">開啟</button></div>`;div.querySelector(".open-semester-doc").onclick=()=>{fillSemesterIspForm(item);showPage("semesterIspEditor");};list.appendChild(div);}}
