@@ -203,6 +203,9 @@ $("semesterIspForm").onsubmit=async event=>{
     const ref=await addDoc(collection(db,"adminDocuments"),payload);$("semesterDocId").value=ref.id;
   }
   window.__adminDocumentsCache?.invalidate?.(ownerEmail);
+  // Keep the list and its enhancement modules in sync without a page reload.
+  await loadSemesterIspDocs();
+  document.dispatchEvent(new CustomEvent("semester-isp:saved"));
   alert("學期 ISP 已儲存");
 };
 onAuthStateChanged(auth,async user=>{currentUser=user;currentAccess=null;$("appView").classList.add('hidden');$("loginView").classList.add('hidden');$("deniedView").classList.add('hidden');if(!user){$("loginView").classList.remove('hidden');return}try{const email=String(user.email||'').trim().toLowerCase();const snap=await getDoc(doc(db,'settings','adminAccess'));const baseAccess=snap.data()?.users?.[email];let access=baseAccess?.enabled!==false?baseAccess:null;if(!access){const assistantSnap=await getDoc(doc(db,'administrativeAssistants',email));const assistantData=assistantSnap.exists()?assistantSnap.data():null;if(assistantData?.enabled===true&&assistantData.ownerEmail){access={...assistantData,email,role:'assistant',ownerEmail:normalizedEmail(assistantData.ownerEmail)};}}if(!access)throw new Error('not-authorized');currentAccess={...access,email};$("appView").classList.remove('hidden');$("userEmail").textContent=`${access.displayName||email}\n${email}`;}catch(err){console.error(err);$("deniedMessage").textContent='此帳號尚未由資源教室行政平台開通行政文書權限，或權限尚未同步。';$("deniedView").classList.remove('hidden');}});
