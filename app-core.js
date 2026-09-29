@@ -929,18 +929,38 @@ function patchNewbornIspWordLayout(zip,data){
   }
   function setCellParagraphLines(tc,value){
     if(!tc)return;
-    const lines=String(value||"").replace(/\r\n?/g,"\n").split(/\n+/).map(x=>x.trim()).filter(Boolean);
-    if(!lines.length)return;
+    const rawLines=String(value||"").replace(/\r\n?/g,"\n").split("\n").map(x=>x.trim()).filter(Boolean);
+    if(!rawLines.length)return;
+
+    // 新生 ISP 匯出：一般換行視為同一段文字；只有真正列點才另起段落。
+    // 避免 AI 或貼上文字的「視覺換行」把正常句子切得零碎。
+    const listPattern=/^(?:\d{1,2}\s*[.、．)]|[（(]\s*\d{1,2}\s*[）)]|[•●▪◆◇■□]|[-–—]\s+)/;
+    const paragraphs=[];
+    rawLines.forEach(line=>{
+      const isList=listPattern.test(line);
+      if(isList){
+        paragraphs.push({text:line,isList:true});
+        return;
+      }
+      if(!paragraphs.length){
+        paragraphs.push({text:line,isList:false});
+        return;
+      }
+      // 非列點內容直接接在上一段後面；若上一段是列點，視為該列點的續行。
+      const prev=paragraphs[paragraphs.length-1];
+      prev.text+=line;
+    });
+
     const source=elementChildren(tc,"p")[0]||null;
     const sourcePPr=source?elementChildren(source,"pPr")[0]?.cloneNode(true):null;
     const sourceRPr=source?.getElementsByTagNameNS(NS,"rPr")[0]?.cloneNode(true)||null;
     elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
-    lines.forEach(line=>{
+    paragraphs.forEach(item=>{
       const p=xml.createElementNS(NS,"w:p");
       if(sourcePPr)p.appendChild(sourcePPr.cloneNode(true));
       const run=xml.createElementNS(NS,"w:r");
       if(sourceRPr)run.appendChild(sourceRPr.cloneNode(true));
-      const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=line;
+      const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=item.text;
       run.appendChild(t);p.appendChild(run);tc.appendChild(p);
     });
   }
