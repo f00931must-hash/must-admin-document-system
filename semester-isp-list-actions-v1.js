@@ -166,6 +166,11 @@ if($("semesterIspForm"))observer.observe($("semesterIspForm"),{childList:true,su
 auth.onAuthStateChanged?.(()=>{});
 setTimeout(apply,0);
 document.addEventListener("semester-isp:saved",()=>{refreshRecords().then(enhanceList).catch(console.warn);});
+document.addEventListener("semester-isp:list-data",event=>{
+  if(ownerEmail&&ownerEmail!==event.detail.ownerEmail)return;
+  records=event.detail.documents.filter(x=>x.type==="SEMESTER_ISP");
+  baseIspRecords=event.detail.documents.filter(x=>!x.type||x.type==="ISP");
+});
 document.addEventListener("click",event=>{
   if(event.target.closest?.('.nav[data-view="semesterIsp"],#newSemesterIspBtn,#newSemesterIspListBtn,.open-semester-doc'))setTimeout(()=>{refreshRecords().then(()=>{enhanceEditor();enhanceList();});},150);
 },true);
