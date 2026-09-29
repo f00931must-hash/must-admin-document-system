@@ -83,3 +83,6 @@
 .contact-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;margin:18px 0}.contact-form label{display:grid;gap:5px}.contact-form input{width:100%}#teacherContacts .editor-card{margin-bottom:22px}#contactDirectory td button+button{margin-left:6px}
 
 .contact-choices{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.contact-choices button{font-size:12px;padding:5px 8px}
+
+/* Semester records share the student card instead of nesting another card. */
+.semester-student-group .semester-grade-records > .doc-item{border:0;border-radius:0;background:transparent;padding:4px 0;margin:8px 0 0!important;box-shadow:none}
