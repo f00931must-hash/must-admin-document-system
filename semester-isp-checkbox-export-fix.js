@@ -348,4 +348,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v3.0.0 loaded");
+console.log("Semester ISP checkbox/export fix v3.1.0 loaded");
