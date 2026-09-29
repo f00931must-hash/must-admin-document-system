@@ -322,7 +322,7 @@ async function downloadFixed(event){
   if(!form||!window.PizZip||!window.docxtemplater||!window.saveAs)return alert("Word 下載元件尚未完成載入，請重新整理後再試");
   const f=serialize(form),old=btn.textContent;btn.disabled=true;btn.textContent="產生新版 Word 中…";
   try{
-    const response=await fetch("./templates/semester-isp-template.docx?v=3.1.1",{cache:"no-store"});
+    const response=await fetch("./templates/semester-isp-template-v2.docx?v=3.1.2",{cache:"no-store"});
     if(!response.ok)throw new Error("無法讀取學期 ISP Word 母版");
     const zip=new window.PizZip(await response.arrayBuffer());
     const word=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
@@ -348,4 +348,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v3.1.1 loaded");
+console.log("Semester ISP checkbox/export fix v3.1.2 loaded");
