@@ -220,21 +220,39 @@ function patchSemesterWordLayout(zip,data){
 }
 function patchStaticCheckboxes(zip,selectedByName){
   const f=zip.file("word/document.xml");if(!f)return;
+  const NS="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
   const xml=new DOMParser().parseFromString(f.asText(),"application/xml");
-  const textNodes=[...xml.getElementsByTagNameNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","t")];
-  const compact=s=>String(s||"").replace(/[\s　]/g,"");
+  const compact=s=>String(s||"").replace(/[\s　]/g,"").replace(/／/g,"/").replace(/[－–—]/g,"-");
+  const textOf=node=>[...node.getElementsByTagNameNS(NS,"t")].map(x=>x.textContent||"").join("");
+  const rowLabelByName={
+    learningSupport:"學習支持",
+    emotionalSupport:"情緒與人際支持",
+    environmentSupport:"生活與環境適應支持",
+    academicPlanningSupport:"學業規劃支持",
+    careerSupport:"生涯與轉銜支持",
+    adminSupport:"行政與資源申請支持",
+    supportAdjustment:"支持服務調整評估"
+  };
+  const rows=[...xml.getElementsByTagNameNS(NS,"tr")];
   for(const [name,options] of Object.entries(supportConfig)){
     const selected=new Set(selectedByName[name]||[]);
+    const row=rows.find(tr=>compact(textOf(tr)).includes(compact(rowLabelByName[name]||name)));
+    if(!row)continue;
+    const textNodes=[...row.getElementsByTagNameNS(NS,"t")];
     for(const option of options){
       const target=compact(option);let idx=-1;
-      for(let i=0;i<textNodes.length;i++){if(compact(textNodes[i].textContent).includes(target)){idx=i;break;}}
+      for(let i=0;i<textNodes.length;i++){
+        if(compact(textNodes[i].textContent).includes(target)){idx=i;break;}
+      }
       if(idx<0)continue;
-      const mark=selected.has(option)?"■":"□";
-      const node=textNodes[idx];
+      const mark=selected.has(option)?"■":"□",node=textNodes[idx];
       if(/[□■]/.test(node.textContent))node.textContent=node.textContent.replace(/[□■]/,mark);
       else{
-        for(let j=idx-1;j>=Math.max(0,idx-4);j--){
-          if(/[□■]/.test(textNodes[j].textContent)){textNodes[j].textContent=textNodes[j].textContent.replace(/([□■])(?!.*[□■])/,mark);break;}
+        for(let j=idx-1;j>=Math.max(0,idx-5);j--){
+          if(/[□■]/.test(textNodes[j].textContent)){
+            textNodes[j].textContent=textNodes[j].textContent.replace(/([□■])(?!.*[□■])/,mark);
+            break;
+          }
         }
       }
     }
