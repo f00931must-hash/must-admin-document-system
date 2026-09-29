@@ -920,6 +920,41 @@ function patchNewbornIspWordLayout(zip,data){
     while(cur){if(cur.nodeType===1&&cur.namespaceURI===NS&&(!name||cur.localName===name))return cur;cur=cur.nextSibling;}
     return null;
   }
+  function nextCell(tc){
+    return nextElementSibling(tc,"tc");
+  }
+  function findCellByLabel(label){
+    const compact=value=>String(value||"").replace(/[\s　]/g,"");
+    return [...xml.getElementsByTagNameNS(NS,"tc")].find(tc=>compact(textOf(tc)).includes(compact(label)))||null;
+  }
+  function setCellParagraphLines(tc,value){
+    if(!tc)return;
+    const lines=String(value||"").replace(/\r\n?/g,"\n").split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    if(!lines.length)return;
+    const source=elementChildren(tc,"p")[0]||null;
+    const sourcePPr=source?elementChildren(source,"pPr")[0]?.cloneNode(true):null;
+    const sourceRPr=source?.getElementsByTagNameNS(NS,"rPr")[0]?.cloneNode(true)||null;
+    elementChildren(tc).filter(n=>n.localName!=="tcPr").forEach(n=>tc.removeChild(n));
+    lines.forEach(line=>{
+      const p=xml.createElementNS(NS,"w:p");
+      if(sourcePPr)p.appendChild(sourcePPr.cloneNode(true));
+      const run=xml.createElementNS(NS,"w:r");
+      if(sourceRPr)run.appendChild(sourceRPr.cloneNode(true));
+      const t=xml.createElementNS(NS,"w:t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=line;
+      run.appendChild(t);p.appendChild(run);tc.appendChild(p);
+    });
+  }
+  const abilityParagraphFields=[
+    ["健康狀況","abilityHealth"],["感官功能","abilitySensory"],["知覺動作","abilityMotor"],["認知能力","abilityCognitive"],
+    ["溝通能力","abilityCommunication"],["學業能力","abilityAcademic"],["生活自理能力","abilitySelfCare"],["社會化及情緒行為能力","abilitySocialEmotional"]
+  ];
+  abilityParagraphFields.forEach(([label,key])=>{
+    const value=String(data[key]||"");
+    if(!value.includes("\n"))return;
+    const labelCell=findCellByLabel(label);
+    setCellParagraphLines(nextCell(labelCell),value);
+  });
+
   function setCenteredSignatureCell(tc,name){
     if(!tc||!name)return;
     // 清掉簽名格內原本的空白段落，保留儲存格屬性。
