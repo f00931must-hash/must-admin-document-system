@@ -83,7 +83,19 @@ function applyTotalFilters(){
 }
 
 function semesterDocFromRecordNode(node){const strong=node.querySelector("strong")?.textContent||"",name=strong.split("｜")[0].trim(),m=strong.match(/｜(.+?)學年度第(.+?)學期/),year=m?.[1]||"",sem=m?.[2]||"";return docs.find(d=>d.type==="SEMESTER_ISP"&&normName(d.studentName)===normName(name)&&String(d.form?.academicYear||"")===year&&String(d.form?.semester||"")===sem);}
-function ensureSemesterFilters(){const head=$("semesterIsp")?.querySelector(".page-head");if(!head||$("semesterClassFilter"))return;const wrap=document.createElement("div");wrap.className="sort-control";wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";wrap.innerHTML='<label>搜尋學生<input id="semesterStudentSearch" type="search" placeholder="輸入姓名" autocomplete="off"></label><label>科系篩選<select id="semesterClassFilter"><option value="">全部科系</option></select></label><label>表單年級篩選<select id="semesterGradeFilter"><option value="">全部表單年級</option></select></label>';const sort=$("semesterIspSort")?.parentElement;head.insertBefore(wrap,sort||$("newSemesterIspListBtn"));wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applySemesterFilters));$("semesterStudentSearch").addEventListener("input",applySemesterFilters);}
+function semesterAdmissionYear(record){
+  const f=record?.form||{};
+  const explicit=norm(f.admissionAcademicYear||f.admissionYear);
+  if(explicit)return String(rocYear(explicit));
+  const candidates=docs.filter(d=>(!d.type||d.type==="ISP")
+    &&normName(d.studentName||d.form?.studentName)===normName(record.studentName||f.studentName)
+    &&deptText(d.form?.department)===deptText(f.department));
+  const years=[...new Set(candidates.map(docAcademicYear).filter(Boolean))];
+  if(years.length===1)return years[0];
+  if(years.length>1)return "未設定";
+  return docAcademicYear({form:{admissionDate:f.admissionDate}})||"未設定";
+}
+function ensureSemesterFilters(){const head=$("semesterIsp")?.querySelector(".page-head");if(!head||$("semesterClassFilter"))return;const wrap=document.createElement("div");wrap.className="sort-control";wrap.style.cssText="display:flex;gap:8px;align-items:end;flex-wrap:wrap";wrap.innerHTML='<label>搜尋學生<input id="semesterStudentSearch" type="search" placeholder="輸入姓名" autocomplete="off"></label><label>科系篩選<select id="semesterClassFilter"><option value="">全部科系</option></select></label><label>入學學年度篩選<select id="semesterAdmissionYearFilter"><option value="">全部入學學年度</option></select></label>';const sort=$("semesterIspSort")?.parentElement;head.insertBefore(wrap,sort||$("newSemesterIspListBtn"));wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",applySemesterFilters));$("semesterStudentSearch").addEventListener("input",applySemesterFilters);}
 function semesterMatchesSearch(doc,term){
   if(!term)return true;
   const f=doc?.form||{};
@@ -92,21 +104,21 @@ function semesterMatchesSearch(doc,term){
 function applySemesterFilters(){
   ensureSemesterFilters();
   const list=$("semesterIspList");if(!list)return;
-  const data=docs.filter(d=>d.type==="SEMESTER_ISP"),deptSel=$("semesterClassFilter"),gradeSel=$("semesterGradeFilter");
-  const oldD=deptSel?.value||"",oldG=gradeSel?.value||"";
+  const data=docs.filter(d=>d.type==="SEMESTER_ISP"),deptSel=$("semesterClassFilter"),yearSel=$("semesterAdmissionYearFilter");
+  const oldD=deptSel?.value||"",oldY=yearSel?.value||"";
   const departments=[...new Set(data.map(docDepartment).filter(x=>x!=="未設定"))].sort((a,b)=>a.localeCompare(b,"zh-Hant"));
-  const grades=[...new Set(data.map(docGrade).filter(x=>x!=="未設定"))].sort((a,b)=>(gradeOrder[a]??99)-(gradeOrder[b]??99));
+  const years=[...new Set(data.map(semesterAdmissionYear))].sort((a,b)=>a==="未設定"?1:b==="未設定"?-1:Number(b)-Number(a));
   if(deptSel){deptSel.innerHTML=`<option value="">全部科系</option>${departments.map(x=>`<option value="${x}">${x}</option>`).join("")}`;deptSel.value=departments.includes(oldD)?oldD:"";}
-  if(gradeSel){gradeSel.innerHTML=`<option value="">全部表單年級</option>${grades.map(x=>`<option value="${x}">${x}年級</option>`).join("")}`;gradeSel.value=grades.includes(oldG)?oldG:"";}
-  const dSel=deptSel?.value||"",g=gradeSel?.value||"",term=searchText($("semesterStudentSearch")?.value);
+  if(yearSel){yearSel.innerHTML=`<option value="">全部入學學年度</option>${years.map(x=>`<option value="${x}">${x==="未設定"?"未設定入學學年度":x+" 學年度入學"}</option>`).join("")}`;yearSel.value=years.includes(oldY)?oldY:"";}
+  const dSel=deptSel?.value||"",year=yearSel?.value||"",term=searchText($("semesterStudentSearch")?.value);
   const groups=[...list.querySelectorAll(":scope > .semester-student-group")];
   for(const group of groups){
     const records=[...group.querySelectorAll(".semester-grade-records > .doc-item")];
     const matches=records.map(node=>({node,doc:semesterDocFromRecordNode(node)})).filter(x=>x.doc)
-      .filter(x=>(!dSel||docDepartment(x.doc)===dSel)&&(!g||docGrade(x.doc)===g)&&semesterMatchesSearch(x.doc,term));
+      .filter(x=>(!dSel||docDepartment(x.doc)===dSel)&&(!year||semesterAdmissionYear(x.doc)===year)&&semesterMatchesSearch(x.doc,term));
     group.style.display=matches.length?"block":"none";
     const picker=group.querySelector(".semester-grade-picker");
-    const selected=g||(term&&matches.length?docGrade(matches[0].doc):"");
+    const selected=term&&matches.length?docGrade(matches[0].doc):"";
     if(picker&&selected&&[...picker.options].some(o=>o.value===selected)){
       picker.value=selected;
       picker.dispatchEvent(new Event("change"));
@@ -115,7 +127,7 @@ function applySemesterFilters(){
   if(!groups.length){
     [...list.children].filter(n=>n.classList.contains("doc-item")).forEach(node=>{
       const doc=semesterDocFromRecordNode(node);if(!doc)return;
-      node.style.display=(!dSel||docDepartment(doc)===dSel)&&(!g||docGrade(doc)===g)&&semesterMatchesSearch(doc,term)?"flex":"none";
+      node.style.display=(!dSel||docDepartment(doc)===dSel)&&(!year||semesterAdmissionYear(doc)===year)&&semesterMatchesSearch(doc,term)?"flex":"none";
     });
   }
 }
