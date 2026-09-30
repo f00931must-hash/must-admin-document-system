@@ -669,6 +669,7 @@ document.querySelectorAll(".semester-ai-generate-btn").forEach(button=>{
 });
 
 const TEACHER_SUMMARY_STATUS_FIELDS=[
+  "disabilityType","certificateCategory","disabilityFeatures","currentDisabilityStatus",
   "abilityHealth","abilitySensory","abilityMotor","abilityCognitive",
   "abilityCommunication","abilityAcademic","abilitySelfCare","abilitySocialEmotional",
   "strengthRelationship","strengthEmotion","strengthIllnessAwareness","strengthProblemSolving",
@@ -677,8 +678,8 @@ const TEACHER_SUMMARY_STATUS_FIELDS=[
   "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
   "studentNeedsAssessment","serviceEvaluationSummary"
 ];
-const TEACHER_SUMMARY_STRATEGY_FIELDS=AI_SERVICE_PLAN_FIELDS.slice(0,14);
-const TEACHER_SUPPORT_LABELS={learningSupport:"學習支持",emotionalSupport:"情緒與人際支持",environmentSupport:"生活與環境適應支持",academicPlanningSupport:"學業規劃支持",careerSupport:"生涯與轉銜支持",adminSupport:"行政與資源申請支持",supportAdjustment:"支持服務調整評估"};
+const TEACHER_SUMMARY_STRATEGY_FIELDS=[...new Set([...TEACHER_SUMMARY_STATUS_FIELDS,...AI_SERVICE_PLAN_FIELDS.slice(0,14)])];
+const TEACHER_SUPPORT_LABELS={disabilityType:"障別",certificateCategory:"證明記載障別",disabilityFeatures:"障礙特徵",currentDisabilityStatus:"目前障礙狀況",learningSupport:"學習支持",emotionalSupport:"情緒與人際支持",environmentSupport:"生活與環境適應支持",academicPlanningSupport:"學業規劃支持",careerSupport:"生涯與轉銜支持",adminSupport:"行政與資源申請支持",supportAdjustment:"支持服務調整評估"};
 function teacherSummarySource(fields){
   const values=formData();
   return fields.map(name=>{
@@ -694,15 +695,14 @@ function teacherSummarySource(fields){
 function cleanTeacherSummary(text){
   const raw=String(text||"").replace(/```[\s\S]*?```/g,m=>m.replace(/```[^\n]*\n?/g,"")).trim();
   let lines=raw.split(/\n+/).map(x=>x.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean);
-  if(lines.length<2)lines=raw.split(/[。；]\s*/).map(x=>x.trim()).filter(Boolean).map(x=>/[。！？]$/.test(x)?x:x+"。");
   return lines.slice(0,5).map((x,i)=>`${i+1}. ${x}`).join("\n");
 }
 async function requestTeacherSummary(source,kind){
   const instruction=kind==="status"
-    ?"請依據以下 ISP 總表資料，統整任課老師需要知道的學生障礙現況。請去除重複資訊，使用正式、客觀、具體的繁體中文，列出最重要的 5 點；不可新增資料中沒有的診斷、能力、需求、原因或風險。只輸出 5 點，不要標題。"
-    :"只依據下方「特教支持服務及策略」的勾選項目與補充說明，整理最多 5 點給任課老師的支持建議。先理解學生的需要與已規劃的協助，再改寫成老師自然、關心學生的口吻，不要逐字照抄勾選項目，也不要使用制式公文或生硬命令的語氣。每點以一句簡短、完整的話說明具體需要及老師可協助的事項，可自然使用「請老師留意」、「煩請老師協助」、「建議老師」等措辭，不必每點都用相同開頭。例如資料提到微積分學習較吃力且需要課輔，可寫「學生在微積分學習上較吃力，煩請老師協助評估課輔需求。」若資料提到持續追蹤學習並與資源教室聯繫，可寫「請老師持續留意學生的學習情形，如遇困難，歡迎與資源教室聯繫討論協助方式。」這些範例僅供語氣參考，不得套用資料沒有的需求或服務。保留具體科目及原資料中的服務分工，不自行新增課輔、考試調整、同儕協助或聯繫安排；已安排的服務不要改寫成尚待評估。支持服務調整評估若只有「現有支持適切，持續維持」，不需寫入摘要，也不要另寫一點「維持現有支持」；若另有具體調整或補充需要，只整理具體事項。避免「以維護學生權益」等空泛目的或重複贅述。相關重點可合併，有幾項就寫幾點，最多 5 點，不為湊點數新增內容。只輸出列點，不要標題。";
+    ?"請依據下方學生的障別、個別特質與實際能力資料，整理任課老師在課堂上需要知道的障礙現況，最多 5 點。重點是這位學生實際的學習、理解、記憶、注意力、表達、人際互動、情緒或課堂參與情形；依個別資料選擇相關面向，不要逐欄摘要或按障別套用所有常見特徵。障別可協助理解資料，但不能據此斷言學生具有未記載的症狀或困難。健康、感官、生活自理等資訊只有在實際影響上課、實作、出席或安全時才寫；健康正常、感官正常、自理正常等無關資訊直接省略。例如學習障礙學生若重點是閱讀理解與記憶較弱，就整理這些學習特質，不為湊點數寫健康正常。保留能幫助老師教學的優勢，例如實作較佳或對特定內容有興趣。以自然、尊重學生、具體簡短的語氣描述，避免標籤化用語與空泛贅述。以目前表單記載為準，不將新生時的資料當成本學期新發生的狀況。只整理有依據且與課堂相關的重點，相關內容合併，有幾項就寫幾點，不強制湊足 5 點。每點獨立一行，只輸出列點，不要標題。"
+    :"請綜合下方學生的障別、實際特質、能力現況、學習困難、需求評估與已規劃的支持服務，撰寫最多 5 點給任課老師的具體支持建議，不限於特教支持服務及策略的勾選項目，也不要逐字抄寫。先理解這位學生在課堂上可能需要的協助，再將其個別特質連結到可行的教學方式；障別作為理解背景，實際個別資料優先，不要因障別而假定學生具有所有常見症狀。允許依據已記載的特質提出相應的課堂協助建議，即使未勾選該項策略；用建議語氣，勿把建議寫成已核定或已安排的服務。例如已記載記憶較弱，可建議將重點分段說明並適時提醒；理論課較難專注但實作較佳，可建議搭配示範或實作引導；較少主動表達困難，可建議老師適時主動關心學習情形。範例只供理解推理方式，不得套用到沒有相關特質的學生。若資料只有障別而無具體特質，可針對該障別提出保守、可調整的教學建議，使用「可視學生實際需要」等措辭，不新增學生事實。考試延長、成績調整、正式課輔、助理人員等服務不可自行宣告核定或承諾，需依已記載安排或寫為評估建議。保留具體科目、已安排的服務與老師或資源教室的分工；目前學期記載優先於新生背景。語氣應像老師依學生情況交代需要的協助，自然、尊重、簡短，有實際內容，不靠固定客套話製造溫度。每點簡短說明需要與協助方式，不加「以維護學生權益」等空泛目的。支持服務調整評估若只是「現有支持適切，持續維持」，不寫入摘要，也不另列維持現有支持；有具體調整才整理。重複建議合併，不為湊點數新增無關內容，有幾項相關重點就寫幾點，最多 5 點。每點獨立一行，只輸出列點，不要標題。";
   const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    text:`${instruction}\n\n【${kind==="status"?"僅限貳、現況能力摘要與特殊教育需求服務資料":"僅限特教支持服務及策略的勾選與說明"}】\n${source}`,
+    text:`${instruction}\n\n【${kind==="status"?"學生障別、個別特質與能力現況":"學生個別特質、能力現況、需求與支持安排"}】\n${source}`,
     mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
     forceRewrite:true,documentType:"ISP"
   })});
@@ -818,7 +818,7 @@ async function downloadNewbornTeacherSummaryData(summary){
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
     const itemLines=text=>text.split(/\n+/).map(x=>x.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean);
     const statusItems=itemLines(status),strategyItems=itemLines(strategies);
-    if(statusItems.length!==5)throw new Error("障礙現況必須有 5 點，請確認列點內容");
+    if(statusItems.length<1||statusItems.length>5)throw new Error("障礙現況請填寫 1～5 點，請確認列點內容");
     if(strategyItems.length<1||strategyItems.length>5)throw new Error("特教支持服務及策略請填寫 1～5 點，請確認列點內容");
     const renderData={
       department:String(summary?.department||"").trim(),
@@ -828,7 +828,7 @@ async function downloadNewbornTeacherSummaryData(summary){
       advisorName:String(summary?.advisorName||"").trim().replace(/老師$/,""),
       counselorName,counselorExtension
     };
-    for(let i=1;i<=5;i++)renderData[`status${i}`]=[{text:statusItems[i-1]}];
+    for(let i=1;i<=5;i++)renderData[`status${i}`]=statusItems[i-1]?[{text:statusItems[i-1]}]:[];
     for(let i=1;i<=5;i++)renderData[`strategy${i}`]=strategyItems[i-1]?[{text:strategyItems[i-1]}]:[];
     docx.render(renderData);
     const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
