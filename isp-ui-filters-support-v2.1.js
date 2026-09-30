@@ -119,7 +119,7 @@ function applySemesterFilters(){
     group.style.display=matches.length?"block":"none";
     const picker=group.querySelector(".semester-grade-picker");
     const selected=term&&matches.length?docGrade(matches[0].doc):"";
-    if(picker&&selected&&[...picker.options].some(o=>o.value===selected)){
+    if(picker&&selected&&picker.value!==selected&&[...picker.options].some(o=>o.value===selected)){
       picker.value=selected;
       picker.dispatchEvent(new Event("change"));
     }
