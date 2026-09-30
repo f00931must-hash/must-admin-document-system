@@ -86,3 +86,11 @@
 
 /* Semester records share the student card instead of nesting another card. */
 .semester-student-group .semester-grade-records > .doc-item{border:0;border-radius:0;background:transparent;padding:4px 0;margin:8px 0 0!important;box-shadow:none}
+
+.semester-student-header,.semester-student-controls{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.semester-student-controls{justify-content:flex-end;flex-wrap:wrap}
+.semester-student-controls label{margin:0;min-width:90px}
+.semester-student-controls label[hidden]{display:none}
+.semester-student-controls .semester-grade-records > .doc-item > div:first-child{display:none}
+.semester-student-controls .doc-actions{align-items:center;flex-wrap:wrap}
+@media(max-width:780px){.semester-student-header{align-items:flex-start;flex-wrap:wrap}.semester-student-controls{width:100%;justify-content:flex-start}}
