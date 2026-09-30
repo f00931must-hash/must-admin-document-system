@@ -78,9 +78,33 @@ function ensureSemesterSort(){const page=$("semesterIsp");if(!page||$("semesterI
 function semesterDocForNode(node){const strong=node.querySelector("strong")?.textContent||"";const name=strong.split("｜")[0].trim();const m=strong.match(/｜(.+?)學年度第(.+?)學期/);const year=m?.[1]||"",sem=m?.[2]||"";return allDocs.find(d=>d.type==="SEMESTER_ISP"&&normName(d.studentName)===normName(name)&&String(d.form?.academicYear||"")===year&&String(d.form?.semester||"")===sem);}
 function inferredSemesterGrade(d){return norm(d?.form?.studentGrade)||extractGrade(d?.form?.studentClass)||"未設定";}
 let grouping=false;
-function enhanceSemesterList(){ensureSemesterFields();ensureSemesterSort();const list=$("semesterIspList");if(!list||grouping)return;const raw=[...list.children].filter(n=>n.classList.contains("doc-item")&&!n.classList.contains("semester-student-group"));if(!raw.length)return;grouping=true;try{const groups=new Map();for(const node of raw){const d=semesterDocForNode(node);if(!d)continue;const grade=inferredSemesterGrade(d),dept=deptText(d.form?.department),key=`${normName(d.studentName)}|${dept}`;node.dataset.studentGrade=grade;node.dataset.department=dept;node.style.margin="8px 0";const obj=groups.get(key)||{name:d.studentName||"未命名",dept,records:[],grades:new Set()};obj.records.push(node);obj.grades.add(grade);groups.set(key,obj);}
+function enhanceSemesterList(){ensureSemesterFields();ensureSemesterSort();const list=$("semesterIspList");if(!list||grouping)return;const raw=[...list.children].filter(n=>n.classList.contains("doc-item")&&!n.classList.contains("semester-student-group"));if(!raw.length)return;grouping=true;try{const groups=new Map();for(const node of raw){const d=semesterDocForNode(node);if(!d)continue;const grade=inferredSemesterGrade(d),dept=deptText(d.form?.department),key=`${normName(d.studentName)}|${dept}`;node.dataset.studentGrade=grade;node.dataset.department=dept;node.dataset.termLabel=`${d.form?.academicYear||"未填"}-${d.form?.semester||"未填"}`;node.style.margin="8px 0";const obj=groups.get(key)||{name:d.studentName||"未命名",dept,records:[],grades:new Set()};obj.records.push(node);obj.grades.add(grade);groups.set(key,obj);}
     if(!groups.size)return;list.innerHTML="";const mode=$("semesterIspSort")?.value||"grade-department";const arr=[...groups.values()];const highest=g=>Math.min(...[...g.grades].map(x=>gradeOrder[x]??98));arr.sort((a,b)=>mode==="department-grade"?(a.dept.localeCompare(b.dept,"zh-Hant")||highest(a)-highest(b)||a.name.localeCompare(b.name,"zh-Hant")):(highest(a)-highest(b)||a.dept.localeCompare(b.dept,"zh-Hant")||a.name.localeCompare(b.name,"zh-Hant")));
-    for(const g of arr){const wrap=document.createElement("div");wrap.className="doc-item semester-student-group";wrap.style.display="block";wrap.style.padding="14px";const grades=[...g.grades].sort((a,b)=>(gradeOrder[a]??98)-(gradeOrder[b]??98));const header=document.createElement("div");header.style.display="flex";header.style.justifyContent="space-between";header.style.gap="12px";header.style.alignItems="center";header.innerHTML=`<div><strong>${g.name}</strong><div class="doc-meta">${g.dept||"未填系別"}｜共有 ${g.records.length} 份學期 ISP</div></div><label>年級 <select class="semester-grade-picker">${grades.map(x=>`<option value="${x}">${x==="未設定"?"未設定年級":x+(/研/.test(x)?"":"年級")}</option>`).join("")}</select></label>`;const body=document.createElement("div");body.className="semester-grade-records";g.records.forEach(n=>body.appendChild(n));wrap.append(header,body);list.appendChild(wrap);const picker=header.querySelector("select");const apply=()=>g.records.forEach(n=>n.style.display=n.dataset.studentGrade===picker.value?"flex":"none");picker.addEventListener("change",apply);apply();}}
+    for(const g of arr){
+      const wrap=document.createElement("div");wrap.className="doc-item semester-student-group";
+      wrap.style.display="block";wrap.style.padding="14px";
+      const header=document.createElement("div");header.className="semester-student-header";
+      const info=document.createElement("div"),name=document.createElement("strong"),meta=document.createElement("div");
+      name.textContent=g.name;meta.className="doc-meta";meta.textContent=`${g.dept||"未填系別"}｜共有 ${g.records.length} 份學期 ISP`;
+      info.append(name,meta);
+      const controls=document.createElement("div");controls.className="semester-student-controls";
+      const body=document.createElement("div");body.className="semester-grade-records";
+      g.records.forEach(n=>body.appendChild(n));
+      const grades=[...g.grades].sort((a,b)=>(gradeOrder[a]??98)-(gradeOrder[b]??98));
+      const gradeLabel=document.createElement("label");gradeLabel.innerHTML=`年級<select class="semester-grade-picker">${grades.map(x=>`<option value="${x}">${x==="未設定"?"未設定年級":x+(/研/.test(x)?"":"年級")}</option>`).join("")}</select>`;
+      const termLabel=document.createElement("label");termLabel.textContent="學期";
+      const termPicker=document.createElement("select");termPicker.className="semester-record-picker";termLabel.appendChild(termPicker);
+      controls.append(body,termLabel,gradeLabel);header.append(info,controls);wrap.appendChild(header);list.appendChild(wrap);
+      const picker=gradeLabel.querySelector("select");
+      const showRecord=()=>g.records.forEach(n=>n.style.display=n.dataset.studentGrade===picker.value&&g.records.indexOf(n)===Number(termPicker.value)?"contents":"none");
+      const apply=()=>{
+        const prior=termPicker.value;termPicker.replaceChildren();
+        g.records.forEach((n,i)=>{if(n.dataset.studentGrade!==picker.value)return;const option=document.createElement("option");option.value=String(i);option.textContent=n.dataset.termLabel;termPicker.appendChild(option);});
+        if([...termPicker.options].some(o=>o.value===prior))termPicker.value=prior;
+        termLabel.hidden=termPicker.options.length<2;showRecord();
+      };
+      picker.addEventListener("change",apply);termPicker.addEventListener("change",showRecord);apply();
+    }}
   finally{grouping=false;}}
 
 function fullTeacherClass(){const form=$("ispForm");if(!form)return "";const f=serialize(form),grade=extractGrade(f.studentClass)||gradeFromAdmission(f.admissionDate),suffix=cleanClassSuffix(f.studentClass);return `${deptText(f.department)}${grade}${suffix}`.trim();}
