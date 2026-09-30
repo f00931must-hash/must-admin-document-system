@@ -682,7 +682,9 @@ const TEACHER_SUPPORT_LABELS={learningSupport:"學習支持",emotionalSupport:"�
 function teacherSummarySource(fields){
   const values=formData();
   return fields.map(name=>{
-    const value=values[name];
+    const value=name==="supportAdjustment"
+      ?(Array.isArray(values[name])?values[name]:String(values[name]||"").split(/[、\n]/)).filter(item=>String(item).trim()!=="現有支持適切，持續維持")
+      :values[name];
     const content=Array.isArray(value)?value.filter(Boolean).join("、"):String(value||"").trim();
     const group=name.endsWith("Note")?name.slice(0,-4):name;
     const label=(TEACHER_SUPPORT_LABELS[group]||aiFieldLabel(name))+(name.endsWith("Note")?"補充說明":"");
@@ -698,7 +700,7 @@ function cleanTeacherSummary(text){
 async function requestTeacherSummary(source,kind){
   const instruction=kind==="status"
     ?"請依據以下 ISP 總表資料，統整任課老師需要知道的學生障礙現況。請去除重複資訊，使用正式、客觀、具體的繁體中文，列出最重要的 5 點；不可新增資料中沒有的診斷、能力、需求、原因或風險。只輸出 5 點，不要標題。"
-    :"只依據下方「特教支持服務及策略」的勾選項目與補充說明，依表單順序整理最多 5 點給任課老師的建議。每點只用一句簡短、白話的繁體中文，寫出具體困難或需求，以及需要老師協助的事項；優先保留科目名稱。例如說明提到微積分較弱且需要課輔，就寫「微積分較弱，請老師評估課輔需求。」若已明確安排課輔，應依原資料寫出需要老師配合的事項。不要延伸其他建議、聯繫流程或解釋目的，不要加上「以維護學生權益」、「提升學習成效」等贅述。只寫資料有依據的內容，不推測未勾選的需求，不為湊點數新增內容；有幾項重點就寫幾點，最多 5 點。只輸出列點，不要標題。";
+    :"只依據下方「特教支持服務及策略」的勾選項目與補充說明，整理最多 5 點給任課老師的支持建議。先理解學生的需要與已規劃的協助，再改寫成老師自然、關心學生的口吻，不要逐字照抄勾選項目，也不要使用制式公文或生硬命令的語氣。每點以一句簡短、完整的話說明具體需要及老師可協助的事項，可自然使用「請老師留意」、「煩請老師協助」、「建議老師」等措辭，不必每點都用相同開頭。例如資料提到微積分學習較吃力且需要課輔，可寫「學生在微積分學習上較吃力，煩請老師協助評估課輔需求。」若資料提到持續追蹤學習並與資源教室聯繫，可寫「請老師持續留意學生的學習情形，如遇困難，歡迎與資源教室聯繫討論協助方式。」這些範例僅供語氣參考，不得套用資料沒有的需求或服務。保留具體科目及原資料中的服務分工，不自行新增課輔、考試調整、同儕協助或聯繫安排；已安排的服務不要改寫成尚待評估。支持服務調整評估若只有「現有支持適切，持續維持」，不需寫入摘要，也不要另寫一點「維持現有支持」；若另有具體調整或補充需要，只整理具體事項。避免「以維護學生權益」等空泛目的或重複贅述。相關重點可合併，有幾項就寫幾點，最多 5 點，不為湊點數新增內容。只輸出列點，不要標題。";
   const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
     text:`${instruction}\n\n【${kind==="status"?"僅限貳、現況能力摘要與特殊教育需求服務資料":"僅限特教支持服務及策略的勾選與說明"}】\n${source}`,
     mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
