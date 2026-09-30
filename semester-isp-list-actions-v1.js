@@ -96,6 +96,7 @@ async function deleteRecord(record,button){
     await deleteDoc(doc(db,"adminDocuments",record.id));
     records=records.filter(x=>x.id!==record.id);
     button.closest(".doc-item")?.remove();
+    document.querySelector('.nav[data-view="semesterIsp"]')?.click();
     alert("已從目前列表刪除；系統已先保留一份安全備份。其他學期與新生 ISP 總表沒有變動。");
   }catch(error){
     console.error(error);button.disabled=false;alert("刪除失敗，請確認帳號權限或稍後再試。");
@@ -110,12 +111,12 @@ function enhanceList(){
     actions.dataset.semesterActions="1";
     const summaryReady=!!(record.teacherSummary?.status&&record.teacherSummary?.strategies);
     const meta=node.querySelector(".doc-meta");
-    if(meta&&!meta.querySelector(".teacher-summary-status")){
+    if(meta&&!actions.querySelector(".teacher-summary-status")){
       const badge=document.createElement("span");
       badge.className="teacher-summary-status "+(summaryReady?"ready":"missing");
       badge.textContent=summaryReady?"任師✓":"任師－";
       badge.title=summaryReady?"已產生任課老師 ISP 摘要":"尚未產生任課老師 ISP 摘要";
-      meta.append("　",badge);
+      actions.prepend(badge);
     }
     if(summaryReady){
       const teacher=document.createElement("button");
