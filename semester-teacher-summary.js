@@ -109,13 +109,16 @@ async function generate({force=false}={}){
   }catch(e){console.error(e);alert(e?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
   finally{if(b){b.disabled=false;b.textContent=old;}}
 }
-function removeTeacherSummaryContactParagraph(zip){
+function prepareTeacherSummaryTemplate(zip,summary){
   const path="word/document.xml",xml=zip.file(path)?.asText();if(!xml)return;
+  const itemCount=text=>String(text||"").split(/\n+/).map(line=>line.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean).length;
+  const counts={status:itemCount(summary?.status),strategy:itemCount(summary?.strategies)};
   const ns="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
   const documentXml=new DOMParser().parseFromString(xml,"application/xml");
   for(const paragraph of Array.from(documentXml.getElementsByTagNameNS(ns,"p"))){
     const text=Array.from(paragraph.getElementsByTagNameNS(ns,"t")).map(node=>node.textContent).join("");
-    if(text.startsWith("若對學生狀況有任何疑問，請隨時與我聯繫"))paragraph.remove();
+    const slot=text.match(/\{#(status|strategy)([1-5])\}/);
+    if((slot&&Number(slot[2])>counts[slot[1]])||text.startsWith("若對學生狀況有任何疑問，請隨時與我聯繫"))paragraph.remove();
   }
   zip.file(path,new XMLSerializer().serializeToString(documentXml));
 }
@@ -129,7 +132,7 @@ async function downloadSummaryData(summary){
     const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.1",{cache:"no-store"});
     if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");
     const zip=new window.PizZip(await res.arrayBuffer());
-    removeTeacherSummaryContactParagraph(zip);
+    prepareTeacherSummaryTemplate(zip,summary);
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
     const itemLines=text=>text.split(/\n+/).map(stripListPrefix).filter(Boolean),statusItems=itemLines(status),strategyItems=itemLines(strategies);
     if(statusItems.length<1||statusItems.length>5)throw new Error("障礙現況請填寫 1～5 點，請確認列點內容");
