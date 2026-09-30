@@ -17,6 +17,7 @@ function inferredGrade(form){
   return m?gradeIndex(m[0]):0;
 }
 function baseYearFromForm(form){
+  const admission=Number(norm(form?.admissionAcademicYear));if(admission>0)return admission;
   const year=Number(norm(form?.academicYear)),g=inferredGrade(form);
   return year&&g?year-g+1:(year||currentAcademicYear());
 }
@@ -133,7 +134,7 @@ function ensureNavigator(){
   const h2=[...form.querySelectorAll("h2")].find(x=>x.textContent.includes("學期與學生資料"));
   if(!h2)return;
   const box=document.createElement("div");box.id="semesterTermNavigator";box.className="semester-term-navigator";
-  box.innerHTML=`<div class="semester-term-head"><div><strong>學期快速切換</strong><small>每顆按鈕代表一個學期；有既有資料時會直接開啟，空白學期可保留目前內容建立新草稿。</small></div><label>第一學年學年度<input id="semesterBaseYear" inputmode="numeric"></label></div><div class="semester-term-grid"></div>`;
+  box.innerHTML=`<div class="semester-term-head"><div><strong>學期快速切換</strong><small>每顆按鈕代表一個學期；有既有資料時會直接開啟，空白學期可保留目前內容建立新草稿。</small></div><label>第一學年學年度<input id="semesterBaseYear" name="admissionAcademicYear" inputmode="numeric"></label></div><div class="semester-term-grid"></div>`;
   h2.insertAdjacentElement("afterend",box);
   const baseInput=$("semesterBaseYear");
   baseInput.addEventListener("change",renderButtons);
@@ -155,7 +156,7 @@ function ensureNavigator(){
       $("semesterBaseYear").value=String(currentAcademicYear());renderButtons();selectTerm(1,1);
     },80);
   },true);
-  form.addEventListener("reset",()=>setTimeout(()=>{$("semesterBaseYear").value=String(currentAcademicYear());renderButtons();},0));
+  form.addEventListener("reset",()=>setTimeout(()=>{$("semesterBaseYear").value=String(baseYearFromForm(serialize(form)));renderButtons();},0));
   setTimeout(updateFromCurrent,0);
 }
 function copyDialog(record){
