@@ -678,7 +678,7 @@ const TEACHER_SUMMARY_STATUS_FIELDS=[
   "analysisUnderstanding","analysisExpression","analysisInteraction","analysisLeisure",
   "studentNeedsAssessment","serviceEvaluationSummary"
 ];
-const TEACHER_SUMMARY_STRATEGY_FIELDS=[...new Set([...TEACHER_SUMMARY_STATUS_FIELDS,...AI_SERVICE_PLAN_FIELDS.slice(0,14)])];
+const TEACHER_SUMMARY_STRATEGY_FIELDS=["disabilityType","certificateCategory","disabilityFeatures","analysisStudyWork","analysisCommunication","analysisInteraction","studentNeedsAssessment","serviceEvaluationSummary",...AI_SERVICE_PLAN_FIELDS.slice(0,14)];
 const TEACHER_SUPPORT_LABELS={disabilityType:"障別",certificateCategory:"證明記載障別",disabilityFeatures:"障礙特徵",currentDisabilityStatus:"目前障礙狀況",learningSupport:"學習支持",emotionalSupport:"情緒與人際支持",environmentSupport:"生活與環境適應支持",academicPlanningSupport:"學業規劃支持",careerSupport:"生涯與轉銜支持",adminSupport:"行政與資源申請支持",supportAdjustment:"支持服務調整評估"};
 function teacherSummarySource(fields){
   const values=formData();
@@ -700,9 +700,9 @@ function cleanTeacherSummary(text){
 async function requestTeacherSummary(source,kind){
   const instruction=kind==="status"
     ?"請依據下方學生的障別、個別特質與實際能力資料，整理任課老師在課堂上需要知道的障礙現況，最多 5 點。重點是這位學生實際的學習、理解、記憶、注意力、表達、人際互動、情緒或課堂參與情形；依個別資料選擇相關面向，不要逐欄摘要或按障別套用所有常見特徵。障別可協助理解資料，但不能據此斷言學生具有未記載的症狀或困難。健康、感官、生活自理等資訊只有在實際影響上課、實作、出席或安全時才寫；健康正常、感官正常、自理正常等無關資訊直接省略。例如學習障礙學生若重點是閱讀理解與記憶較弱，就整理這些學習特質，不為湊點數寫健康正常。保留能幫助老師教學的優勢，例如實作較佳或對特定內容有興趣。以自然、尊重學生、具體簡短的語氣描述，避免標籤化用語與空泛贅述。以目前表單記載為準，不將新生時的資料當成本學期新發生的狀況。只整理有依據且與課堂相關的重點，相關內容合併，有幾項就寫幾點，不強制湊足 5 點。每點獨立一行，只輸出列點，不要標題。"
-    :"請綜合下方學生的障別、實際特質、能力現況、學習困難、需求評估與已規劃的支持服務，撰寫最多 5 點給任課老師的具體支持建議，不限於特教支持服務及策略的勾選項目，也不要逐字抄寫。先理解這位學生在課堂上可能需要的協助，再將其個別特質連結到可行的教學方式；障別作為理解背景，實際個別資料優先，不要因障別而假定學生具有所有常見症狀。允許依據已記載的特質提出相應的課堂協助建議，即使未勾選該項策略；用建議語氣，勿把建議寫成已核定或已安排的服務。例如已記載記憶較弱，可建議將重點分段說明並適時提醒；理論課較難專注但實作較佳，可建議搭配示範或實作引導；較少主動表達困難，可建議老師適時主動關心學習情形。範例只供理解推理方式，不得套用到沒有相關特質的學生。若資料只有障別而無具體特質，可針對該障別提出保守、可調整的教學建議，使用「可視學生實際需要」等措辭，不新增學生事實。考試延長、成績調整、正式課輔、助理人員等服務不可自行宣告核定或承諾，需依已記載安排或寫為評估建議。保留具體科目、已安排的服務與老師或資源教室的分工；目前學期記載優先於新生背景。語氣應像老師依學生情況交代需要的協助，自然、尊重、簡短，有實際內容，不靠固定客套話製造溫度。每點簡短說明需要與協助方式，不加「以維護學生權益」等空泛目的。支持服務調整評估若只是「現有支持適切，持續維持」，不寫入摘要，也不另列維持現有支持；有具體調整才整理。重複建議合併，不為湊點數新增無關內容，有幾項相關重點就寫幾點，最多 5 點。每點獨立一行，只輸出列點，不要標題。";
+    :"請以資源教室輔導老師撰寫任課老師通知的角度，依下方學生需求評估、實際需要、支持安排及補充說明，整理簡要的特教支持服務及策略。障別及障礙特徵僅作理解需求的背景，不重述障礙現況，不列出能力缺點，也不按障別套用一般策略清單。每點直接寫老師需要留意、配合或協助的重點；把相關需要合併成可執行的一項建議，不逐項照抄勾選內容。優先寫具體科目、學生提出的困難、已規劃的協助與需老師配合的事項。例如需求說明提到微積分課輔，就寫「微積分學習需較多協助，請老師評估課輔需求。」已安排課輔時則依原安排說明老師需配合什麼。可依實際需要提出合理的教學建議，但不能新增未記載的學生困難，或宣告尚未核定的考試調整、助理人員等服務。沒有具體特殊需求時可簡要交代關注學習或必要時反映需求，不補上無根據的服務。使用自然、尊重學生的語氣，重點在掌握個別需要，不靠客套話或長篇解釋。每點以一句短句為主，約 20～45 字，不重複描述學生現況、解釋策略原理或加入空泛目的；有幾項重點就寫幾點，最多 5 點。支持服務調整評估中的「現有支持適切，持續維持」省略。不要附加聯絡人、分機、署名或「若有疑問請聯繫」的結尾段落，這些由文件署名提供。每點獨立一行，只輸出列點，不要標題。";
   const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    text:`${instruction}\n\n【${kind==="status"?"學生障別、個別特質與能力現況":"學生個別特質、能力現況、需求與支持安排"}】\n${source}`,
+    text:`${instruction}\n\n【${kind==="status"?"學生障別、個別特質與能力現況":"學生需求評估、個別需要與支持安排"}】\n${source}`,
     mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
     forceRewrite:true,documentType:"ISP"
   })});
@@ -732,7 +732,7 @@ function clearNewbornTeacherSummary(){
 }
 function getNewbornTeacherSummaryData(){
   const status=$("teacherSummaryStatus")?.value.trim()||"",strategies=$("teacherSummaryStrategies")?.value.trim()||"";
-  const hasAny=[status,strategies,$("teacherSummaryDepartment")?.value,$("teacherSummaryClass")?.value].some(v=>String(v||"").trim());
+  const hasAny=[status,strategies,$("teacherSummaryDepartment")?.value,$("teacherSummaryClass")?.value,$("teacherSummaryAdvisor")?.value,$("teacherSummaryCounselor")?.value,$("teacherSummaryExtension")?.value].some(v=>String(v||"").trim());
   if(!hasAny)return null;
   return {
     department:$("teacherSummaryDepartment")?.value.trim()||"",
@@ -786,9 +786,9 @@ async function generateNewbornTeacherSummary({force=false}={}){
   $("teacherSummaryClass").value=newbornTeacherClassDisplay(f.department,f.studentClass);
   $("teacherSummaryStudentName").value=f.studentName||"";
   $("teacherSummaryDisability").value=f.disabilityType||f.certificateCategory||"";
-  $("teacherSummaryAdvisor").value=f.advisorName||"";
-  $("teacherSummaryCounselor").value=f.counselorName||"";
-  $("teacherSummaryExtension").value=f.counselorExtension||"";
+  $("teacherSummaryAdvisor").value=existing?.advisorName||f.advisorName||"";
+  $("teacherSummaryCounselor").value=existing?.counselorName||f.counselorName||"";
+  $("teacherSummaryExtension").value=existing?.counselorExtension||f.counselorExtension||"";
   panel.classList.remove("hidden");panel.scrollIntoView({behavior:"smooth",block:"start"});
   const statusSource=teacherSummarySource(TEACHER_SUMMARY_STATUS_FIELDS);
   const strategySource=teacherSummarySource(TEACHER_SUMMARY_STRATEGY_FIELDS);
@@ -804,6 +804,16 @@ async function generateNewbornTeacherSummary({force=false}={}){
   }catch(error){console.error(error);alert(error?.message||"任課老師 ISP 摘要產生失敗，請稍後再試。");}
   finally{if(button){button.disabled=false;button.textContent=button.dataset.hasSummary==="1"&&!force?"查看任師摘要":old;}}
 }
+function removeTeacherSummaryContactParagraph(zip){
+  const path="word/document.xml",xml=zip.file(path)?.asText();if(!xml)return;
+  const ns="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const documentXml=new DOMParser().parseFromString(xml,"application/xml");
+  for(const paragraph of Array.from(documentXml.getElementsByTagNameNS(ns,"p"))){
+    const text=Array.from(paragraph.getElementsByTagNameNS(ns,"t")).map(node=>node.textContent).join("");
+    if(text.startsWith("若對學生狀況有任何疑問，請隨時與我聯繫"))paragraph.remove();
+  }
+  zip.file(path,new XMLSerializer().serializeToString(documentXml));
+}
 async function downloadNewbornTeacherSummaryData(summary){
   try{
     if(typeof window.PizZip==="undefined"||typeof window.docxtemplater==="undefined"||typeof window.saveAs==="undefined")throw new Error("Word 下載元件尚未完成載入，請重新整理頁面後再試");
@@ -815,6 +825,7 @@ async function downloadNewbornTeacherSummaryData(summary){
     const res=await fetch("./templates/teacher-isp-summary-template.docx?v=1.5.1",{cache:"no-store"});
     if(!res.ok)throw new Error("無法讀取任課老師 ISP 摘要 Word 母版");
     const zip=new window.PizZip(await res.arrayBuffer());
+    removeTeacherSummaryContactParagraph(zip);
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
     const itemLines=text=>text.split(/\n+/).map(x=>x.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean);
     const statusItems=itemLines(status),strategyItems=itemLines(strategies);
@@ -1762,3 +1773,8 @@ $("parseReceiptFilesBtn").onclick=readReceiptFiles;
 $("clearReceiptFilesBtn").onclick=()=>{receiptStudents=[];$("receiptFiles").value="";$("receiptStatus").textContent="";$("receiptAcademicYear").value="";$("receiptReview").classList.add("hidden");};
 $("downloadTeacherReceiptBtn").onclick=async()=>{try{const data=receiptExportData();await saveReceiptWorkbook(await buildTeacherReceiptWorkbook(data),`${data.academicYear}-${data.semester}_ISP簽收單_以老師為主.xlsx`);}catch(error){alert(error.message);}};
 $("downloadStudentReceiptBtn").onclick=async()=>{try{const data=receiptExportData();await saveReceiptWorkbook(await buildStudentReceiptWorkbook(data),`${data.academicYear}-${data.semester}_ISP簽收單_以學生為主.xlsx`);}catch(error){alert(error.message);}};
+
+let teacherContactSaveQueue=Promise.resolve();
+for(const id of ["teacherSummaryAdvisor","teacherSummaryCounselor","teacherSummaryExtension"]){
+  $(id)?.addEventListener("change",()=>{teacherContactSaveQueue=teacherContactSaveQueue.then(()=>persistNewbornTeacherSummaryNow()).then(ok=>{if(!ok)alert("摘要欄位儲存失敗，請按儲存草稿再試。");});});
+}
