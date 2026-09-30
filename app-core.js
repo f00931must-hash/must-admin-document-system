@@ -812,6 +812,9 @@ function prepareTeacherSummaryTemplate(zip,summary){
   const documentXml=new DOMParser().parseFromString(xml,"application/xml");
   for(const paragraph of Array.from(documentXml.getElementsByTagNameNS(ns,"p"))){
     const text=Array.from(paragraph.getElementsByTagNameNS(ns,"t")).map(node=>node.textContent).join("");
+    for(const node of Array.from(paragraph.getElementsByTagNameNS(ns,"t"))){
+      node.textContent=node.textContent.replace("{department}系資源教室學生","資源教室學生");
+    }
     const slot=text.match(/\{#(status|strategy)([1-5])\}/);
     if((slot&&Number(slot[2])>counts[slot[1]])||text.startsWith("若對學生狀況有任何疑問，請隨時與我聯繫"))paragraph.remove();
   }
