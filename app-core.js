@@ -698,7 +698,7 @@ function cleanTeacherSummary(text){
 async function requestTeacherSummary(source,kind){
   const instruction=kind==="status"
     ?"請依據以下 ISP 總表資料，統整任課老師需要知道的學生障礙現況。請去除重複資訊，使用正式、客觀、具體的繁體中文，列出最重要的 5 點；不可新增資料中沒有的診斷、能力、需求、原因或風險。只輸出 5 點，不要標題。"
-    :"只依據下方「特教支持服務及策略」的勾選項目與各項補充說明，依表單順序整理最多 5 點給任課老師看的支持措施。將同類別的勾選與說明一起理解，優先寫明具體科目與需求；例如勾選課業輔導且學習支持說明寫需要微積分課輔，第一點就寫學生需要微積分課輔，請任課老師留意學習狀況，必要時與輔導老師聯繫安排。用稍微白話、簡短且可執行的繁體中文，說清楚老師需要做什麼或配合什麼；資源教室負責的工作請明確寫由資源教室協助。不要引用其他段落、推測未勾選的需求或補足沒有依據的點數；資料不足 5 點就只寫有依據的點。只輸出列點，不要標題。";
+    :"只依據下方「特教支持服務及策略」的勾選項目與補充說明，依表單順序整理最多 5 點給任課老師的建議。每點只用一句簡短、白話的繁體中文，寫出具體困難或需求，以及需要老師協助的事項；優先保留科目名稱。例如說明提到微積分較弱且需要課輔，就寫「微積分較弱，請老師評估課輔需求。」若已明確安排課輔，應依原資料寫出需要老師配合的事項。不要延伸其他建議、聯繫流程或解釋目的，不要加上「以維護學生權益」、「提升學習成效」等贅述。只寫資料有依據的內容，不推測未勾選的需求，不為湊點數新增內容；有幾項重點就寫幾點，最多 5 點。只輸出列點，不要標題。";
   const response=await fetch(ISP_AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
     text:`${instruction}\n\n【${kind==="status"?"僅限貳、現況能力摘要與特殊教育需求服務資料":"僅限特教支持服務及策略的勾選與說明"}】\n${source}`,
     mode:"summary",section:kind==="status"?"任課老師 ISP 摘要－障礙現況":"任課老師 ISP 摘要－特教支持服務及策略",
@@ -816,7 +816,8 @@ async function downloadNewbornTeacherSummaryData(summary){
     const docx=new window.docxtemplater(zip,{paragraphLoop:true,linebreaks:true,nullGetter:()=>""});
     const itemLines=text=>text.split(/\n+/).map(x=>x.replace(/^\s*(?:[-•●▪◆]|(?:\d+|[一二三四五六七八九十]+)[.、）)])\s*/,"").trim()).filter(Boolean);
     const statusItems=itemLines(status),strategyItems=itemLines(strategies);
-    if(statusItems.length!==5||strategyItems.length!==5)throw new Error("障礙現況與支持策略都必須各有 5 點，請確認列點內容");
+    if(statusItems.length!==5)throw new Error("障礙現況必須有 5 點，請確認列點內容");
+    if(strategyItems.length<1||strategyItems.length>5)throw new Error("特教支持服務及策略請填寫 1～5 點，請確認列點內容");
     const renderData={
       department:String(summary?.department||"").trim(),
       studentClass:String(summary?.studentClass||"").trim(),
@@ -826,7 +827,7 @@ async function downloadNewbornTeacherSummaryData(summary){
       counselorName,counselorExtension
     };
     for(let i=1;i<=5;i++)renderData[`status${i}`]=[{text:statusItems[i-1]}];
-    for(let i=1;i<=5;i++)renderData[`strategy${i}`]=[{text:strategyItems[i-1]}];
+    for(let i=1;i<=5;i++)renderData[`strategy${i}`]=strategyItems[i-1]?[{text:strategyItems[i-1]}]:[];
     docx.render(renderData);
     const blob=docx.getZip().generate({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
     const safe=(renderData.studentName||"未命名").replace(/[\\/:*?"<>|]/g,"_");
