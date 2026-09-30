@@ -153,6 +153,7 @@ $("semesterBackToTopBtn")?.addEventListener("click",()=>{
 });
 $("generateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:false}));$("regenerateSemesterTeacherSummaryBtn")?.addEventListener("click",()=>generate({force:true}));$("downloadSemesterTeacherSummaryBtn")?.addEventListener("click",download);window.__semesterTeacherSummary={getData:getSummaryData,load:loadSummary,clear:clearSummary,downloadData:downloadSummaryData};console.log("Semester teacher ISP summary v1.3.2 loaded");
 
+let teacherContactSaveQueue=Promise.resolve();
 for(const id of ["semesterTeacherSummaryAdvisor","semesterTeacherSummaryCounselor","semesterTeacherSummaryExtension"]){
-  $(id)?.addEventListener("change",()=>{persistSummaryNow().then(ok=>{if(!ok)alert("摘要欄位儲存失敗，請按儲存學期 ISP 再試。");});});
+  $(id)?.addEventListener("change",()=>{teacherContactSaveQueue=teacherContactSaveQueue.then(()=>persistSummaryNow()).then(ok=>{if(!ok)alert("摘要欄位儲存失敗，請按儲存學期 ISP 再試。");});});
 }
