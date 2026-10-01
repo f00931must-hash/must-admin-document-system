@@ -440,7 +440,7 @@ function buildAiSource(mode,form=$("ispForm")){
   return formatFields(AI_NEEDS_FIELDS);
 }
 
-// These prompts apply only to form evaluations, never teacher-facing summaries.
+// These prompts apply only to semester ISP evaluations, never newborn or teacher-facing summaries.
 function formEvaluationInstruction(target){
   return target==="studentNeedsAssessment"?"你是資源教室輔導老師，請參照中心既有學生需求評估的簡要寫法，依原始能力、評估及討論資料撰寫。若資料明確顯示學習與生活適應良好、目前無特殊需求，只用一個短句或兩個短句交代，不逐欄重述正常能力，不額外補上課輔、諮商、提醒或其他建議，不寫長篇追蹤、目的或行政套語。範本寫法（須有相應原始資料才使用）：「目前學習與生活適應良好，暫無特殊需求，必要時提供協助與支持。」若資料確有與學生討論才可寫「經與學生討論，暫未提出特殊需求，後續視需要提供協助。」不得虛構已進行訪談或討論，也不將未填資料當成正常或無需求。有明確需要協助的地方，才另外以編號列點寫出具體需求與相應協助；一點一個重點，相關需求合併，有幾項寫幾項，不湊點數，不先加一大段制式總結。內容自然、尊重學生、簡要且具體，不靠客套話製造溫度，不按障別推定未記載的困難，省略與需要無關的正常健康、自理資訊。不編造事件或服務安排，不把待評估寫成已安排，不附標題或聯絡資訊，只輸出正文。":target==="serviceEvaluationSummary"?"你是明新科技大學資源教室輔導老師，請以中心既有常態服務範本為基準，撰寫『服務評估摘要』。本欄說明資源教室提供的支持服務，不是學生需求評估，也不是任課老師摘要。即使學生暫無特殊需求，仍以以下常態服務為基本內容，不可只寫『暫無需求，持續追蹤』或把常態服務省略：1.通知任課老師學生特殊狀況及教育需求，留意課堂學習情形；2.觀察學期學習情形與成效，有需要時協助學生於規定期限內提出課輔申請，經輔導人員評估後依需要提供課輔及助理人員等支持；3.特教服務諮詢；4.在校生活適應與學習關懷；5.輔導活動通知與邀請；6.學校重要資訊通知及提醒，例如學雜費減免、選課。以上是使用者確認的中心常態服務，可作一般支持基準，不須逐項有學生特殊困難才寫。相關內容可合併，以自然、簡要的輔導老師口吻表達，避免空泛目的與多餘解釋。依範本採編號列點，每點一項服務，通常 4～6 點；內容相近可合併，不硬湊點數。若原始資料有個別需求，在相應服務中具體補充或調整，例如微積分課輔；若明確記載不使用某項服務，尊重該狀態，不寫成已安排。課輔與助理人員維持『有需要時申請、經評估後提供』的條件，不能把常態服務範圍說成這位學生已使用，也不可宣告未核定的安排。僅使用上述中心服務及有資料支持的個別安排，不額外加入諮商、生涯探索或障礙再鑑定等未記載服務。不附標題、聯絡資訊或署名，只輸出正文列點。":"";
 }
@@ -562,7 +562,7 @@ document.querySelectorAll(".newborn-text-polish-btn").forEach(button=>{
     button.disabled=true;button.textContent="AI 潤飾中…";
     try{
       const payload=await requestIspAi({
-        text:formEvaluationText(button.dataset.aiTarget,original,{polish:true}),
+        text:original,
         mode:"summary",
         section:button.dataset.aiSection||"ISP 文字潤飾",
         forceRewrite:true,
@@ -595,7 +595,7 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
     button.disabled=true; button.textContent="AI 潤飾中…";
     try{
       const requestPolish=async forceRewrite=>{
-        const payload=await requestIspAi({text:formEvaluationText(button.dataset.aiTarget,original,{polish:true}),mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"});
+        const payload=await requestIspAi({text:original,mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"});
         return getIspAiText(payload);
       };
       let polished=await requestPolish(false);
@@ -627,8 +627,7 @@ document.querySelectorAll(".ai-generate-btn").forEach(button=>{
     const oldLabel=button.textContent;
     button.disabled=true;button.textContent="AI 產生中…";
     try{
-      const evaluation=formEvaluationInstruction(button.dataset.aiTarget);
-      const payload=await requestIspAi({text:formEvaluationText(button.dataset.aiTarget,source),mode:evaluation?"summary":button.dataset.aiMode,section:evaluation?button.dataset.aiTarget:undefined,forceRewrite:!!evaluation,documentType:"ISP"});
+      const payload=await requestIspAi({text:source,mode:button.dataset.aiMode,documentType:"ISP"});
       const generated=getIspAiText(payload);
       if(!generated)throw new Error("AI 沒有回傳可用內容");
       undoButton.dataset.original=original;
