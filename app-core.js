@@ -439,6 +439,17 @@ function buildAiSource(mode,form=$("ispForm")){
   }
   return formatFields(AI_NEEDS_FIELDS);
 }
+
+// These prompts apply only to form evaluations, never teacher-facing summaries.
+function formEvaluationInstruction(target){
+  return target==="studentNeedsAssessment"?"你是熟悉學生的資源教室輔導老師，請依原始資料簡要撰寫學生需求評估。先理解這位學生學習、互動或適應上的實際處境，再整理目前最需要的協助及老師可留意的事項，不逐欄摘要、不將勾選項目逐字搬入。語氣像輔導老師在交代學生的需要，自然、尊重、具體，不靠客套話製造溫度。只保留有依據且與學生需求相關的內容，省略無關的正常健康或自理資訊，不按障別推定困難。不使用「持續追蹤：」等標籤或行政套語，不加「以維護權益」「促進全人發展」等空泛目的。以一個簡短段落、通常 1～3 句交代重點，不列點、不寫標題，不硬湊長度。若資料確實記載目前沒有服務需求，就如實簡短交代，不自行補上課輔、諮商、提醒或其他服務；未填資料不等於沒有需求。參考寫法（僅學寫法，不能當作學生事實）：「學生遇到困難時較少主動求助，學習上需要較多提醒，請老師適時關心並協助表達需要。」若確實暫無需求，可寫「目前適應情形尚可，暫無提出服務需求，有需要時再與資源教室討論。」不可虛構事件或服務安排。只輸出正文。":target==="serviceEvaluationSummary"?"你是熟悉學生的資源教室輔導老師，請依學生需求與實際服務規劃，簡要撰寫服務評估摘要。先判斷這位學生目前需要哪些協助、現有安排是否合適、有沒有具體要調整的地方，再自然交代本次評估重點。勾選只是參考，不逐項列出全部服務。用自然、尊重、具體的語氣，像輔導老師說明學生需要，不用行政套語或空泛目的。以一個簡短段落、通常 1～3 句為主，不列點、不寫標題、不硬湊內容。明確區分已安排、待評估、目前未使用或不需要服務，不把建議說成已提供。若目前暫無需求或現有支持適切，只簡短交代實際狀態，不額外添加課業提醒、畢業學分檢視、生涯探索、諮商或障礙再鑑定等例行清單。資料缺漏不可當成沒有需求。範例僅供寫法參考，不能套用為學生事實：「目前以課業協助為主，微積分課輔需求將與任課老師討論，其餘依學生後續需要再評估。」不靠客套話製造溫度，不虛構需要或承諾服務。只輸出正文。":"";
+}
+function formEvaluationText(target,text,{polish=false}={}){
+  const instruction=formEvaluationInstruction(target);
+  return instruction?instruction+(polish?"\n這次只潤飾以下既有文字，保留原意與服務狀態，不新增學生事實或服務，不把原有需求改成沒有需求。":"")+"\n\n【"+(polish?"原文":"原始評估資料")+"】\n"+text:text;
+}
+window.__ispFormEvaluationText=formEvaluationText;
+
 function attachUndoButton(button){
   let buttonGroup=button.closest(".ai-button-group");
   let undoButton=buttonGroup?.querySelector(".ai-undo-btn")||null;
@@ -551,7 +562,7 @@ document.querySelectorAll(".newborn-text-polish-btn").forEach(button=>{
     button.disabled=true;button.textContent="AI 潤飾中…";
     try{
       const payload=await requestIspAi({
-        text:original,
+        text:formEvaluationText(button.dataset.aiTarget,original,{polish:true}),
         mode:"summary",
         section:button.dataset.aiSection||"ISP 文字潤飾",
         forceRewrite:true,
@@ -584,7 +595,7 @@ document.querySelectorAll(".ai-polish-btn").forEach(button=>{
     button.disabled=true; button.textContent="AI 潤飾中…";
     try{
       const requestPolish=async forceRewrite=>{
-        const payload=await requestIspAi({text:original,mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"});
+        const payload=await requestIspAi({text:formEvaluationText(button.dataset.aiTarget,original,{polish:true}),mode:"summary",section:button.dataset.aiSection,forceRewrite,documentType:"ISP"});
         return getIspAiText(payload);
       };
       let polished=await requestPolish(false);
@@ -616,7 +627,8 @@ document.querySelectorAll(".ai-generate-btn").forEach(button=>{
     const oldLabel=button.textContent;
     button.disabled=true;button.textContent="AI 產生中…";
     try{
-      const payload=await requestIspAi({text:source,mode:button.dataset.aiMode,documentType:"ISP"});
+      const evaluation=formEvaluationInstruction(button.dataset.aiTarget);
+      const payload=await requestIspAi({text:formEvaluationText(button.dataset.aiTarget,source),mode:evaluation?"summary":button.dataset.aiMode,section:evaluation?button.dataset.aiTarget:undefined,forceRewrite:!!evaluation,documentType:"ISP"});
       const generated=getIspAiText(payload);
       if(!generated)throw new Error("AI 沒有回傳可用內容");
       undoButton.dataset.original=original;
@@ -647,7 +659,7 @@ async function requestSemesterIspAi(form,kind){
   const source=buildAiSource(kind==="needs"?"needs-assessment":"service-evaluation",form);
   if(!source)throw new Error("目前沒有足夠的已填資料，請先填寫學生能力現況及評估欄位。");
   const instruction=kind==="needs"
-    ?"請依據以下本學期學生能力現況與評估，撰寫一段完整的『學生需求評估』。內容應統整學生整體狀況、主要學習或適應需求，並寫出任課老師在課堂上可留意或協助的事項。使用正式、客觀、自然的繁體中文，不得使用標題、編號、項目符號或列點，不可新增資料中沒有的診斷、能力或事件。只輸出一個完整段落。"
+    ?formEvaluationInstruction("studentNeedsAssessment")
     :"請依據以下本學期學生能力現況、評估及需求，列出資源教室本學期將實際採取的特教支持服務及策略。每一點要結合學生的具體狀況與相對應措施，例如因學科困難而協調任課老師提供課後輔導，或持續關懷出席與課業表現。避免只重述學生狀況，也不要寫成空泛口號。使用正式、客觀、可執行的繁體中文，列出有依據且必要的 2 至 6 點，不可虛構。只輸出列點，不要標題。";
   const payload=await requestIspAi({text:`${instruction}\n\n【僅限目前學期 ISP 表單資料】\n${source}`,mode:"summary",section:kind==="needs"?"學期 ISP－學生需求評估":"學期 ISP－特教支持服務及策略",forceRewrite:true,documentType:"SEMESTER_ISP"});
   const result=kind==="needs"?cleanSemesterNeedsAssessment(getIspAiText(payload)):cleanSemesterStrategies(getIspAiText(payload));
