@@ -83,12 +83,12 @@ async function persist(s,mutate){
  writeQueue=task.catch(()=>{});
  return task;
 }
-const nav=document.createElement('button');nav.className='nav';nav.dataset.view='studentHandover';nav.textContent='📋 表單交付紀錄';
-document.querySelector('.sidebar .spacer').before(nav);
-const page=document.createElement('section');page.id='studentHandover';page.className='page hidden';
+const nav=$('studentHandoverNav')||document.createElement('button');nav.className='nav';nav.dataset.view='studentHandover';nav.textContent='📋 表單交付紀錄';
+if(!nav.isConnected)document.querySelector('.sidebar .spacer').before(nav);
+const page=$('studentHandover')||document.createElement('section');page.id='studentHandover';if(!page.isConnected)page.className='page hidden';
 const now=new Date(),year=now.getFullYear()-1911-(now.getMonth()<7?1:0);
 page.innerHTML='<div class="page-head"><div><h1>表單交付紀錄</h1><p>記錄交給學生的文件；每學期分開保存，修改後自動儲存；點「編輯」填寫日期與新增項目。</p></div><button type="button" class="secondary" id="handoverRefresh">重新載入</button></div><div class="editor-card"><div class="official-grid cols-4"><label>搜尋<input id="handoverSearch" placeholder="姓名、學號或系別"></label><label>系別<select id="handoverDepartment"><option value="">全部系別</option></select></label><label>學年度<input id="handoverYear" inputmode="numeric" value="'+year+'" placeholder="例如 115"></label><label>學期<select id="handoverTerm"><option value="1">第1學期</option><option value="2">第2學期</option></select></label><label>提醒篩選<select id="handoverState"><option value="">全部</option><option value="pending">已交付、待繳回</option><option value="notGiven">尚有未交付項目</option></select></label><label>年級<select id="handoverGrade"><option value="">全部年級</option>'+Array.from({length:8},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'年級</option>').join('')+'<option value="unknown">年級未確認</option></select></label></div><p id="handoverStatus" aria-live="polite"></p></div><div id="handoverList"></div>';
-document.querySelector('main.main').append(page);
+if(!page.isConnected)document.querySelector('main.main').append(page);
 let sessionEmail='';
 nav.onclick=async()=>{
  const ok=await(window.__ispAutosave?.flush?.('handover')??true);if(ok===false)return;
@@ -130,3 +130,5 @@ page.addEventListener('click',async e=>{
  const id='other-'+crypto.randomUUID();btn.disabled=true;
  try{const current=await persist(students[n],list=>{if(list.some(x=>x.name===name))throw Error('已有同名項目。');return [...list,{id,name,givenDate:'',requiresReturn:true,returned:false}];});if(current)render();$('handoverStatus').textContent='已新增並儲存';}catch(err){$('handoverStatus').textContent='新增失敗：'+err.message;}finally{btn.disabled=false;}
 });
+
+if(!page.classList.contains('hidden'))nav.onclick();
