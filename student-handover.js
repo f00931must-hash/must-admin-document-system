@@ -4,8 +4,9 @@ import { getFirestore, collection, query, where, getDocs, getDoc, doc, runTransa
 const app=getApps()[0],auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const TYPE='STUDENT_HANDOVER',fixed=['需求調查表','任課老師簽收單','課輔申請單','協助同學申請單'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let owner='',students=[],saved=[],loading=false;
+let owner='',students=[],saved=[],loading=false;const expanded=new Set();
 function academicYear(date){const m=String(date||'').trim().match(/^(?:民國\s*)?(\d{2,4})\s*[年\/.-]\s*(\d{1,2})/);if(!m)return 0;const y=Number(m[1])-(Number(m[1])>1911?1911:0);return y-(Number(m[2])<8?1:0);}
+function admissionYear(f){const value=String(f.admissionAcademicYear||f.admissionYear||'').trim();return /^\d{2,4}$/.test(value)?Number(value)-(Number(value)>=1912?1911:0):academicYear(f.admissionDate);}
 function grade(s,year){return s.admissionYear?year-s.admissionYear+1:0;}
 function term(){const y=$('handoverYear').value.trim();if(!/^\d{3}$/.test(y))throw Error('請輸入三位數民國學年度，例如 115。');return y+'-'+$('handoverTerm').value;}
 function record(s){return saved.find(r=>r.studentKey===s.key&&r.term===term());}
@@ -29,7 +30,7 @@ async function load(){
  const f=d.form||{},name=String(d.studentName||f.studentName||'').trim(),sid=String(d.studentId||f.studentId||'').trim();if(!name)continue;
  const matches=[...roster.values()].filter(s=>s.name===name);
  const key=sid?'id:'+sid:matches.length===1?matches[0].key:'name:'+name,old=roster.get(key);
- const s={key,name,studentId:sid,department:String(f.department||'').trim(),admissionYear:academicYear(f.admissionDate)};
+ const s={key,name,studentId:sid,department:String(f.department||'').trim(),admissionYear:admissionYear(f)};
  roster.set(key,{...s,department:s.department||old?.department||'',admissionYear:s.admissionYear||old?.admissionYear||0});
  }
  for(const r of saved)if(!roster.has(r.studentKey))roster.set(r.studentKey,{key:r.studentKey,name:r.studentName,studentId:r.studentId||'',department:r.department||'',admissionYear:r.admissionYear||0});
@@ -42,12 +43,17 @@ async function load(){
 function render(){
  let t;try{t=term();}catch(e){$('handoverStatus').textContent=e.message;return;}
  const year=Number(t.split('-')[0]),search=$('handoverSearch').value.trim().toLowerCase(),department=$('handoverDepartment').value,g=$('handoverGrade').value;
- const list=students.filter(s=>(!department||s.department===department)&&(!g||(g==='unknown'?grade(s,year)<=0:grade(s,year)===Number(g)))&&[s.name,s.studentId,s.department].join(' ').toLowerCase().includes(search));
- $('handoverStatus').textContent=t+'｜共 '+list.length+' 位學生；年級依入學年度推算，未填入學日期者顯示未確認。';
- $('handoverList').innerHTML=list.map(s=>{
+ const state=$('handoverState').value;
+ const list=students.filter(s=>!state||items(s).some(x=>state==='pending'?x.givenDate&&x.requiresReturn&&!x.returned:!x.givenDate)).filter(s=>(!department||s.department===department)&&(!g||(g==='unknown'?grade(s,year)<=0:grade(s,year)===Number(g)))&&[s.name,s.studentId,s.department].join(' ').toLowerCase().includes(search));
+ $('handoverStatus').textContent=t+'｜共 '+list.length+' 位學生；年級依入學年度推算，未填入學年度者顯示未確認。';
+ $('handoverList').innerHTML='<div class="table-wrap"><table class="entry-table handover-overview"><thead><tr><th>學生</th>'+fixed.map(n=>'<th>'+esc(n)+'</th>').join('')+'<th>其他</th><th></th></tr></thead><tbody>'+list.map(s=>{
  const n=students.indexOf(s),gr=grade(s,year);
- return '<article class="editor-card"><div class="page-head"><div><h2>'+esc(s.name)+'</h2><p>'+esc(s.studentId||'未填學號')+'｜'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</p></div></div><div class="table-wrap"><table class="entry-table"><thead><tr><th>交付項目</th><th>交付日期</th><th>需繳回</th><th>已繳回</th></tr></thead><tbody>'+items(s).map(item=>'<tr data-student="'+n+'" data-item="'+esc(item.id)+'"><td>'+esc(item.name)+' <button type="button" class="delete-doc" data-delete-handover="'+esc(item.id)+'" data-student="'+n+'" aria-label="刪除'+esc(item.name)+'" title="刪除此項目">×</button></td><td><input aria-label="'+esc(item.name)+'交付日期" type="date" data-field="givenDate" value="'+esc(item.givenDate)+'"></td><td><input aria-label="'+esc(item.name)+'需繳回" type="checkbox" data-field="requiresReturn" '+(item.requiresReturn?'checked':'')+'></td><td><input aria-label="'+esc(item.name)+'已繳回" type="checkbox" data-field="returned" '+(item.returned?'checked':'')+' '+(!item.requiresReturn?'disabled':'')+'></td></tr>').join('')+'</tbody></table></div><div class="actions"><input aria-label="其他項目名稱" id="handoverOther'+n+'" placeholder="其他項目名稱"><button type="button" class="secondary" data-add-other="'+n+'">＋ 新增其他項目</button></div></article>';
- }).join('')||'<div class="editor-card">目前沒有符合條件的學生。</div>';
+ const values=items(s),pending=values.filter(x=>x.givenDate&&x.requiresReturn&&!x.returned).length;
+ const summary=values.filter(x=>!x.id.startsWith('fixed-')).map(x=>x.name+'（'+(x.returned?'已繳回':!x.givenDate?'未交付':x.requiresReturn?'待繳回':'不需繳回')+'）').join('、');
+ const cells=fixed.map((name,i)=>{const item=values.find(x=>x.id==='fixed-'+i);if(!item)return '<td class="muted">—</td>';const status=item.returned?'已繳回':!item.givenDate?'未交付':item.requiresReturn?'待繳回':'不需繳回';return '<td data-student="'+n+'" data-item="'+esc(item.id)+'"><span style="color:'+(status==='待繳回'?'#b45309':status==='已繳回'?'#167347':'#6b7280')+'">'+status+'</span><small style="display:block">'+esc(item.givenDate)+'</small>'+(item.givenDate&&item.requiresReturn?'<label style="display:flex;gap:5px;align-items:center"><input type="checkbox" data-field="returned" '+(item.returned?'checked':'')+'>繳回</label>':'')+'</td>';}).join('');
+ return '<tr><td><strong>'+esc(s.name)+'</strong><small style="display:block">'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</small>'+(pending?'<small style="color:#b45309">'+pending+'項待繳回</small>':'')+'</td>'+cells+'<td>'+esc(summary||'—')+'</td><td><button type="button" class="secondary" data-toggle-handover="'+n+'">'+(expanded.has(s.key)?'收起':'編輯')+'</button></td></tr><tr id="handoverDetail'+n+'" class="'+(expanded.has(s.key)?'':'hidden')+'"><td colspan="7"><article class="editor-card"><div class="page-head"><div><h2>'+esc(s.name)+'</h2><p>'+esc(s.studentId||'未填學號')+'｜'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</p></div></div><div class="table-wrap"><table class="entry-table"><thead><tr><th>交付項目</th><th>交付日期</th><th>需繳回</th><th>已繳回</th></tr></thead><tbody>'+items(s).map(item=>'<tr data-student="'+n+'" data-item="'+esc(item.id)+'"><td>'+esc(item.name)+' <button type="button" class="delete-doc" data-delete-handover="'+esc(item.id)+'" data-student="'+n+'" aria-label="刪除'+esc(item.name)+'" title="刪除此項目">×</button></td><td><input aria-label="'+esc(item.name)+'交付日期" type="date" data-field="givenDate" value="'+esc(item.givenDate)+'"></td><td><input aria-label="'+esc(item.name)+'需繳回" type="checkbox" data-field="requiresReturn" '+(item.requiresReturn?'checked':'')+'></td><td><input aria-label="'+esc(item.name)+'已繳回" type="checkbox" data-field="returned" '+(item.returned?'checked':'')+' '+(!item.requiresReturn?'disabled':'')+'></td></tr>').join('')+'</tbody></table></div><div class="actions"><input aria-label="其他項目名稱" id="handoverOther'+n+'" placeholder="其他項目名稱"><button type="button" class="secondary" data-add-other="'+n+'">＋ 新增其他項目</button></div></article></td></tr>';
+ }).join('')+'</tbody></table></div>';
+ if(!list.length)$('handoverList').innerHTML='<div class="editor-card">目前沒有符合條件的學生。</div>';
 }
 let writeQueue=Promise.resolve();
 async function persist(s,mutate){
@@ -81,7 +87,7 @@ const nav=document.createElement('button');nav.className='nav';nav.dataset.view=
 document.querySelector('.sidebar .spacer').before(nav);
 const page=document.createElement('section');page.id='studentHandover';page.className='page hidden';
 const now=new Date(),year=now.getFullYear()-1911-(now.getMonth()<7?1:0);
-page.innerHTML='<div class="page-head"><div><h1>表單交付紀錄</h1><p>記錄交給學生的文件；每學期分開保存，修改後自動儲存。</p></div><button type="button" class="secondary" id="handoverRefresh">重新載入</button></div><div class="editor-card"><div class="official-grid cols-4"><label>搜尋<input id="handoverSearch" placeholder="姓名、學號或系別"></label><label>系別<select id="handoverDepartment"><option value="">全部系別</option></select></label><label>學年度<input id="handoverYear" inputmode="numeric" value="'+year+'" placeholder="例如 115"></label><label>學期<select id="handoverTerm"><option value="1">第1學期</option><option value="2">第2學期</option></select></label><label>年級<select id="handoverGrade"><option value="">全部年級</option>'+Array.from({length:8},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'年級</option>').join('')+'<option value="unknown">年級未確認</option></select></label></div><p id="handoverStatus" aria-live="polite"></p></div><div id="handoverList"></div>';
+page.innerHTML='<div class="page-head"><div><h1>表單交付紀錄</h1><p>記錄交給學生的文件；每學期分開保存，修改後自動儲存；點「編輯」填寫日期與新增項目。</p></div><button type="button" class="secondary" id="handoverRefresh">重新載入</button></div><div class="editor-card"><div class="official-grid cols-4"><label>搜尋<input id="handoverSearch" placeholder="姓名、學號或系別"></label><label>系別<select id="handoverDepartment"><option value="">全部系別</option></select></label><label>學年度<input id="handoverYear" inputmode="numeric" value="'+year+'" placeholder="例如 115"></label><label>學期<select id="handoverTerm"><option value="1">第1學期</option><option value="2">第2學期</option></select></label><label>提醒篩選<select id="handoverState"><option value="">全部</option><option value="pending">已交付、待繳回</option><option value="notGiven">尚有未交付項目</option></select></label><label>年級<select id="handoverGrade"><option value="">全部年級</option>'+Array.from({length:8},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'年級</option>').join('')+'<option value="unknown">年級未確認</option></select></label></div><p id="handoverStatus" aria-live="polite"></p></div><div id="handoverList"></div>';
 document.querySelector('main.main').append(page);
 let sessionEmail='';
 nav.onclick=async()=>{
@@ -92,19 +98,22 @@ nav.onclick=async()=>{
 };
 $('handoverTerm').value=now.getMonth()>=1&&now.getMonth()<7?'2':'1';
 $('handoverRefresh').onclick=load;
-for(const id of ['handoverSearch','handoverDepartment','handoverYear','handoverTerm','handoverGrade'])$(id).addEventListener(id==='handoverSearch'?'input':'change',render);
+for(const id of ['handoverSearch','handoverDepartment','handoverYear','handoverTerm','handoverGrade','handoverState'])$(id).addEventListener(id==='handoverSearch'?'input':'change',render);
 page.addEventListener('change',async e=>{
- const input=e.target,row=input.closest('tr[data-student]');if(!row||!input.dataset.field)return;
+ const input=e.target,row=input.closest('[data-student][data-item]');if(!row||!input.dataset.field)return;
  const student=students[Number(row.dataset.student)],field=input.dataset.field,value=input.type==='checkbox'?input.checked:input.value;
  const controls=[...row.querySelectorAll('input')];controls.forEach(x=>x.disabled=true);
  try{
  await persist(student,list=>list.map(item=>item.id===row.dataset.item?{...item,[field]:value,...(field==='requiresReturn'&&!value?{returned:false}:{})}:item));
  $('handoverStatus').textContent='已儲存';
+
  const returned=row.querySelector('[data-field="returned"]');if(field==='requiresReturn'&&!value)returned.checked=false;
+ render();
  }catch(err){$('handoverStatus').textContent='儲存失敗：'+err.message;input.type==='checkbox'?input.checked=!value:input.value=(items(student).find(x=>x.id===row.dataset.item)?.[field]||'');}
- finally{controls.forEach(x=>x.disabled=false);row.querySelector('[data-field="returned"]').disabled=!row.querySelector('[data-field="requiresReturn"]').checked;}
+ finally{controls.forEach(x=>x.disabled=false);const required=row.querySelector('[data-field="requiresReturn"]');if(required)row.querySelector('[data-field="returned"]').disabled=!required.checked;}
 });
 page.addEventListener('click',async e=>{
+ const toggle=e.target.closest('[data-toggle-handover]');if(toggle){const detail=$('handoverDetail'+toggle.dataset.toggleHandover);detail.classList.toggle('hidden');const key=students[Number(toggle.dataset.toggleHandover)].key;if(detail.classList.contains('hidden'))expanded.delete(key);else expanded.add(key);toggle.textContent=detail.classList.contains('hidden')?'編輯':'收起';return;}
  const remove=e.target.closest('[data-delete-handover]');
  if(remove){
  const student=students[Number(remove.dataset.student)],id=remove.dataset.deleteHandover;
