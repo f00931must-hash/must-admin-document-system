@@ -13,6 +13,7 @@ window.fetch=(input,init)=>{
 await import("./app-core.js?v=1.6.30");
 await import("./admin-doc-cache.js?v=1.0.0");
 await import("./isp-autosave-hotfix.js?v=1.1.1");
+await import("./student-handover.js?v=1.1.1");
 await import("./isp-structure-enhancements.js?v=2.0.9");
 await import("./isp-ui-filters-support-v2.1.js?v=2.1.9");
 await import("./semester-isp-grade-8-fix.js?v=1.0.0");
@@ -26,4 +27,3 @@ await import("./semester-teacher-summary.js?v=1.3.7");
 await import("./isp-receipt-combined.js?v=0.2.0");
 await import("./teacher-contacts.js?v=1.0.0");
 
-await import("./student-handover.js?v=1.1.0");
