@@ -26,4 +26,4 @@ await import("./semester-teacher-summary.js?v=1.3.7");
 await import("./isp-receipt-combined.js?v=0.2.0");
 await import("./teacher-contacts.js?v=1.0.0");
 
-await import("./student-handover.js?v=1.0.2");
+await import("./student-handover.js?v=1.1.0");
