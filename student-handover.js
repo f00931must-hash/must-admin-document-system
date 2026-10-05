@@ -46,7 +46,7 @@ function render(){
  $('handoverStatus').textContent=t+'｜共 '+list.length+' 位學生；年級依入學年度推算，未填入學日期者顯示未確認。';
  $('handoverList').innerHTML=list.map(s=>{
  const n=students.indexOf(s),gr=grade(s,year);
- return '<article class="editor-card"><div class="page-head"><div><h2>'+esc(s.name)+'</h2><p>'+esc(s.studentId||'未填學號')+'｜'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</p></div></div><div class="table-wrap"><table class="entry-table"><thead><tr><th>交付項目</th><th>交付日期</th><th>需繳回</th><th>已繳回</th></tr></thead><tbody>'+items(s).map(item=>'<tr data-student="'+n+'" data-item="'+esc(item.id)+'"><td>'+esc(item.name)+'</td><td><input aria-label="'+esc(item.name)+'交付日期" type="date" data-field="givenDate" value="'+esc(item.givenDate)+'"></td><td><input aria-label="'+esc(item.name)+'需繳回" type="checkbox" data-field="requiresReturn" '+(item.requiresReturn?'checked':'')+'></td><td><input aria-label="'+esc(item.name)+'已繳回" type="checkbox" data-field="returned" '+(item.returned?'checked':'')+' '+(!item.requiresReturn?'disabled':'')+'></td></tr>').join('')+'</tbody></table></div><div class="actions"><input aria-label="其他項目名稱" id="handoverOther'+n+'" placeholder="其他項目名稱"><button type="button" class="secondary" data-add-other="'+n+'">＋ 新增其他項目</button></div></article>';
+ return '<article class="editor-card"><div class="page-head"><div><h2>'+esc(s.name)+'</h2><p>'+esc(s.studentId||'未填學號')+'｜'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</p></div></div><div class="table-wrap"><table class="entry-table"><thead><tr><th>交付項目</th><th>交付日期</th><th>需繳回</th><th>已繳回</th></tr></thead><tbody>'+items(s).map(item=>'<tr data-student="'+n+'" data-item="'+esc(item.id)+'"><td>'+esc(item.name)+' <button type="button" class="delete-doc" data-delete-handover="'+esc(item.id)+'" data-student="'+n+'" aria-label="刪除'+esc(item.name)+'" title="刪除此項目">×</button></td><td><input aria-label="'+esc(item.name)+'交付日期" type="date" data-field="givenDate" value="'+esc(item.givenDate)+'"></td><td><input aria-label="'+esc(item.name)+'需繳回" type="checkbox" data-field="requiresReturn" '+(item.requiresReturn?'checked':'')+'></td><td><input aria-label="'+esc(item.name)+'已繳回" type="checkbox" data-field="returned" '+(item.returned?'checked':'')+' '+(!item.requiresReturn?'disabled':'')+'></td></tr>').join('')+'</tbody></table></div><div class="actions"><input aria-label="其他項目名稱" id="handoverOther'+n+'" placeholder="其他項目名稱"><button type="button" class="secondary" data-add-other="'+n+'">＋ 新增其他項目</button></div></article>';
  }).join('')||'<div class="editor-card">目前沒有符合條件的學生。</div>';
 }
 let writeQueue=Promise.resolve();
@@ -105,6 +105,17 @@ page.addEventListener('change',async e=>{
  finally{controls.forEach(x=>x.disabled=false);row.querySelector('[data-field="returned"]').disabled=!row.querySelector('[data-field="requiresReturn"]').checked;}
 });
 page.addEventListener('click',async e=>{
+ const remove=e.target.closest('[data-delete-handover]');
+ if(remove){
+ const student=students[Number(remove.dataset.student)],id=remove.dataset.deleteHandover;
+ remove.disabled=true;
+ try{
+ const current=await persist(student,list=>list.filter(item=>item.id!==id));
+ if(current)render();
+ $('handoverStatus').textContent='已刪除並儲存';
+ }catch(err){$('handoverStatus').textContent='刪除失敗：'+err.message;remove.disabled=false;}
+ return;
+ }
  const btn=e.target.closest('[data-add-other]');if(!btn)return;
  const n=Number(btn.dataset.addOther),input=$('handoverOther'+n),name=input.value.trim();if(!name){input.focus();return;}
  const id='other-'+crypto.randomUUID();btn.disabled=true;
