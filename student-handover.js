@@ -1,6 +1,6 @@
 import { getApps } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getFirestore, collection, query, where, getDocs, getDoc, doc, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getFirestore, collection, query, where, getDocs, getDoc, doc, runTransaction, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 const app=getApps()[0],auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
 const TYPE='STUDENT_HANDOVER',fixed=['需求調查表','任課老師簽收單','課輔申請單','協助同學申請單'];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -49,18 +49,33 @@ function render(){
  return '<article class="editor-card"><div class="page-head"><div><h2>'+esc(s.name)+'</h2><p>'+esc(s.studentId||'未填學號')+'｜'+esc(s.department||'未填系別')+'｜'+(gr>0?gr+'年級':'年級未確認')+'</p></div></div><div class="table-wrap"><table class="entry-table"><thead><tr><th>交付項目</th><th>交付日期</th><th>需繳回</th><th>已繳回</th></tr></thead><tbody>'+items(s).map(item=>'<tr data-student="'+n+'" data-item="'+esc(item.id)+'"><td>'+esc(item.name)+'</td><td><input aria-label="'+esc(item.name)+'交付日期" type="date" data-field="givenDate" value="'+esc(item.givenDate)+'"></td><td><input aria-label="'+esc(item.name)+'需繳回" type="checkbox" data-field="requiresReturn" '+(item.requiresReturn?'checked':'')+'></td><td><input aria-label="'+esc(item.name)+'已繳回" type="checkbox" data-field="returned" '+(item.returned?'checked':'')+' '+(!item.requiresReturn?'disabled':'')+'></td></tr>').join('')+'</tbody></table></div><div class="actions"><input aria-label="其他項目名稱" id="handoverOther'+n+'" placeholder="其他項目名稱"><button type="button" class="secondary" data-add-other="'+n+'">＋ 新增其他項目</button></div></article>';
  }).join('')||'<div class="editor-card">目前沒有符合條件的學生。</div>';
 }
+let writeQueue=Promise.resolve();
 async function persist(s,mutate){
- const user=auth.currentUser,selectedTerm=term(),scope=owner;if(!user||!scope||user.email.toLowerCase()!==sessionEmail)throw Error('請先重新載入。');
- const ref=doc(db,'adminDocuments','handover-'+encodeURIComponent(scope+'|'+s.key+'|'+selectedTerm));
- const result=await runTransaction(db,async tx=>{
- const snap=await tx.get(ref),data=snap.data(),existing=data?.items||fixed.map((name,i)=>({id:'fixed-'+i,name,givenDate:'',requiresReturn:true,returned:false}));
+ const user=auth.currentUser,selectedTerm=term(),scope=owner;
+ if(!user||!scope||user.email.toLowerCase()!==sessionEmail)throw Error('請先重新載入。');
+ const task=writeQueue.then(async()=>{
+ const known=saved.find(r=>r.studentKey===s.key&&r.term===selectedTerm);
+ const ref=doc(db,'adminDocuments',known?.id||'handover-'+encodeURIComponent(scope+'|'+s.key+'|'+selectedTerm));
+ const build=existing=>{
  const next=mutate(existing.map(x=>({...x})));
- const payload={type:TYPE,ownerEmail:scope,studentKey:s.key,studentName:s.name,studentId:s.studentId,department:s.department,admissionYear:s.admissionYear,term:selectedTerm,items:next,updatedAt:serverTimestamp(),lastEditorEmail:user.email.toLowerCase()};
- if(snap.exists())tx.update(ref,payload);else tx.set(ref,{...payload,ownerUid:user.uid,createdAt:serverTimestamp()});
- return {...payload,id:ref.id};
+ return {type:TYPE,ownerEmail:scope,studentKey:s.key,studentName:s.name,studentId:s.studentId,department:s.department,admissionYear:s.admissionYear,term:selectedTerm,items:next,updatedAt:serverTimestamp(),lastEditorEmail:user.email.toLowerCase()};
+ };
+ let payload;
+ if(known){
+ payload=await runTransaction(db,async tx=>{
+ const snap=await tx.get(ref);if(!snap.exists())throw Error('紀錄已變更，請重新載入後再試。');
+ const next=build(snap.data().items||[]);tx.update(ref,next);return next;
  });
- const i=saved.findIndex(x=>x.id===ref.id);if(i<0)saved.push(result);else saved[i]=result;
+ }else{
+ payload=build(fixed.map((name,i)=>({id:'fixed-'+i,name,givenDate:'',requiresReturn:true,returned:false})));
+ await setDoc(ref,{...payload,ownerUid:user.uid,createdAt:serverTimestamp()});
+ }
+ const result={...payload,id:ref.id},i=saved.findIndex(x=>x.id===ref.id);
+ if(i<0)saved.push(result);else saved[i]=result;
  return selectedTerm===term();
+ });
+ writeQueue=task.catch(()=>{});
+ return task;
 }
 const nav=document.createElement('button');nav.className='nav';nav.dataset.view='studentHandover';nav.textContent='📋 表單交付紀錄';
 document.querySelector('.sidebar .spacer').before(nav);
