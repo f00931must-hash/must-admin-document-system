@@ -238,23 +238,18 @@ function patchStaticCheckboxes(zip,selectedByName){
     const selected=new Set(selectedByName[name]||[]);
     const row=rows.find(tr=>compact(textOf(tr)).includes(compact(rowLabelByName[name]||name)));
     if(!row)continue;
-    const textNodes=[...row.getElementsByTagNameNS(NS,"t")];
+    // Word can split a label across several runs; match the whole paragraph,
+    // then replace only its checkbox, preserving text and run formatting.
+    const paragraphs=[...row.getElementsByTagNameNS(NS,"p")];
     for(const option of options){
-      const target=compact(option);let idx=-1;
-      for(let i=0;i<textNodes.length;i++){
-        if(compact(textNodes[i].textContent).includes(target)){idx=i;break;}
-      }
-      if(idx<0)continue;
-      const mark=selected.has(option)?"■":"□",node=textNodes[idx];
-      if(/[□■]/.test(node.textContent))node.textContent=node.textContent.replace(/[□■]/,mark);
-      else{
-        for(let j=idx-1;j>=Math.max(0,idx-5);j--){
-          if(/[□■]/.test(textNodes[j].textContent)){
-            textNodes[j].textContent=textNodes[j].textContent.replace(/([□■])(?!.*[□■])/,mark);
-            break;
-          }
-        }
-      }
+      const target=compact(option);
+      const paragraph=paragraphs.find(p=>{
+        const label=compact(textOf(p)).replace(/^[□■]/,"");
+        return label===target||label.startsWith(target+"：")||label.startsWith(target+":");
+      });
+      if(!paragraph)continue;
+      const node=[...paragraph.getElementsByTagNameNS(NS,"t")].find(t=>/[□■]/.test(t.textContent));
+      if(node)node.textContent=node.textContent.replace(/[□■]/,selected.has(option)?"■":"□");
     }
   }
   zip.file("word/document.xml",new XMLSerializer().serializeToString(xml));
@@ -348,4 +343,4 @@ function install(){
   document.addEventListener("click",downloadFixed,true);
 }
 install();
-console.log("Semester ISP checkbox/export fix v3.1.2 loaded");
+console.log("Semester ISP checkbox/export fix v3.1.3 loaded");
